@@ -11,12 +11,12 @@ const app = express();
 
 app.use(express.json({ limit: "5mb" }));
 
-// middleware global de segurança
-app.use(auth);
-
-// rotas
+// rotas públicas
 app.use("/", healthRoutes);
-app.use("/", agendamentoRoutes); // mantém compatibilidade com endpoints antigos
-app.use("/", messageRoutes);     // /message-router vai ficar aqui
+
+// rotas protegidas
+app.use(auth);
+app.use("/", agendamentoRoutes);
+app.use("/", messageRoutes);
 
 module.exports = app;
