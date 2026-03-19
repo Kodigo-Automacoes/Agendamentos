@@ -1,7 +1,7 @@
 // services/conversaEstado.service.js
 // Gerencia o state machine da conversa no Postgres (integracoes.conversa_estado).
 //
-// Colunas: conversa_id (PK unique), estado, intencao_id, ultima_lista (jsonb), updated_at
+// Colunas: id (PK), estado, intencao_id, ultima_lista (jsonb), updated_at
 // Estados: idle | coletando_dados | aguardando_profissional | aguardando_escolha | aguardando_confirmacao
 
 module.exports = (pool) => ({
@@ -13,7 +13,7 @@ module.exports = (pool) => ({
     const sql = `
       SELECT estado, intencao_id, ultima_lista, updated_at
       FROM integracoes.conversa_estado
-      WHERE conversa_id = $1::uuid
+      WHERE id = $1::uuid
     `;
     const { rows } = await pool.query(sql, [conversaId]);
     return rows[0] || null;
@@ -28,14 +28,13 @@ module.exports = (pool) => ({
     const ultimaLista = patch.ultima_lista ?? null;
 
     const sql = `
-      INSERT INTO integracoes.conversa_estado (conversa_id, estado, intencao_id, ultima_lista)
-      VALUES ($1::uuid, $2::text, $3::uuid, $4::jsonb)
-      ON CONFLICT (conversa_id)
-      DO UPDATE SET
-        estado      = EXCLUDED.estado,
-        intencao_id = EXCLUDED.intencao_id,
-        ultima_lista = EXCLUDED.ultima_lista,
-        updated_at  = now()
+      UPDATE integracoes.conversa_estado
+      SET
+        estado       = $2::text,
+        intencao_id  = $3::uuid,
+        ultima_lista = $4::jsonb,
+        updated_at   = now()
+      WHERE id = $1::uuid
       RETURNING estado, intencao_id, ultima_lista, updated_at
     `;
 
@@ -45,6 +44,10 @@ module.exports = (pool) => ({
       intencaoId,
       ultimaLista ? JSON.stringify(ultimaLista) : null,
     ]);
+
+    if (!rows[0]) {
+      throw new Error(`Conversa ${conversaId} não encontrada para atualizar estado`);
+    }
 
     return rows[0];
   },
