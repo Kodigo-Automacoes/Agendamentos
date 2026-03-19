@@ -27,7 +27,7 @@ const servicoResolver = require('../services/servicoResolver.service')(pool);
 
 // --- Utils ---
 const { parseEscolha, parseConfirmacao, parseCancelarFluxo, normalizeText } = require('../utils/flowParser');
-const { parseDataPtBR } = require('../utils/dateParser');
+const { parseDataPtBR, parseHoraPtBR, periodoFromHora } = require('../utils/dateParser');
 
 // ===================== Helpers de resposta =====================
 
@@ -87,6 +87,60 @@ function token() {
   return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
+function hhmmToMinutes(hhmm) {
+  if (!hhmm || !/^\d{2}:\d{2}$/.test(hhmm)) return null;
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function inferPeriodoDoTexto(texto) {
+  const t = normalizeText(texto);
+  if (t.includes('manhã') || t.includes('manha')) return 'manha';
+  if (t.includes('tarde')) return 'tarde';
+  if (t.includes('noite')) return 'noite';
+  return null;
+}
+
+function inferServicoDoTexto(texto) {
+  const t = normalizeText(texto);
+  if (!t) return null;
+  if (t.includes('combo') || (t.includes('corte') && t.includes('barba'))) return 'combo';
+  if (t.includes('corte') || t.includes('cabelo')) return 'corte';
+  if (t.includes('barba')) return 'barba';
+  return null;
+}
+
+function inferEntitiesFromText(texto, timezone) {
+  const horario = parseHoraPtBR(texto);
+  return {
+    data: parseDataPtBR(texto, { timezone }),
+    horario,
+    periodo: periodoFromHora(horario) || inferPeriodoDoTexto(texto),
+    servico: inferServicoDoTexto(texto),
+    profissional: null,
+  };
+}
+
+function shouldRestartColeta(texto) {
+  const t = normalizeText(texto);
+  const restart = ['oi', 'ola', 'olá', 'bom dia', 'boa tarde', 'boa noite', 'menu', 'ajuda', 'comecar', 'começar', 'inicio', 'início'];
+  return restart.includes(t);
+}
+
+function hasSinalAgendamento(texto) {
+  const t = normalizeText(texto);
+  return (
+    t.includes('agend') ||
+    t.includes('marcar') ||
+    t.includes('horario') ||
+    t.includes('horário') ||
+    t.includes('corte') ||
+    t.includes('cabelo') ||
+    t.includes('barba') ||
+    t.includes('combo')
+  );
+}
+
 /**
  * Formata um timestamp ISO no timezone correto da unidade.
  */
@@ -131,6 +185,7 @@ async function handleAguardandoEscolha({ ctx, estadoRow, texto }) {
       servicoId: lista.servico_id,
       dataISO: lista.data,
       periodo: lista.periodo,
+      horaPreferida: lista.hora_preferida || null,
       resumoIA: lista.resumo_ia || {},
       prefixo: '⏱ Os horários anteriores expiraram. Aqui estão os atuais:\n\n',
     });
@@ -253,6 +308,7 @@ async function handleAguardandoProfissional({ ctx, estadoRow, texto }) {
     servicoId: lista.servico_id,
     dataISO: lista.data,
     periodo: lista.periodo,
+    horaPreferida: lista.hora_preferida || null,
     resumoIA: lista.resumo_ia || {},
   });
 }
@@ -267,6 +323,12 @@ async function handleColetandoDados({ ctx, estadoRow, texto }) {
     return reply('Cancelado! Se quiser agendar de novo, é só pedir 🙂');
   }
 
+  // Se o cliente "reiniciar" a conversa, deixa cair para IA/fallback.
+  if (shouldRestartColeta(texto)) {
+    await conversaEstado.clear(ctx.conversa_id);
+    return null;
+  }
+
   const lista = estadoRow.ultima_lista || {};
   const falta = lista.falta;
 
@@ -274,14 +336,22 @@ async function handleColetandoDados({ ctx, estadoRow, texto }) {
   if (falta === 'data') {
     const dataISO = parseDataPtBR(texto, { timezone: ctx.timezone });
     if (!dataISO) {
-      return reply('Não entendi a data 😕 Tenta algo como: amanhã, sexta, 20/02');
+      return reply(
+        'Beleza! Qual dia você prefere?\n' +
+        'Pode ser assim:\n' +
+        '- amanhã\n' +
+        '- sexta\n' +
+        '- 20/03'
+      );
     }
 
     // Merge e continuar o fluxo de agendamento
+    const horario = parseHoraPtBR(texto) || lista.hora_preferida || null;
     const entities = {
       ...(lista.resumo_ia?.entities || {}),
       data: dataISO,
-      periodo: lista.periodo || 'manha',
+      horario,
+      periodo: periodoFromHora(horario) || lista.periodo || 'manha',
     };
     return await handleNovoAgendamento({ ctx, entities, resumoIA: lista.resumo_ia || {}, texto });
   }
@@ -314,6 +384,7 @@ async function handleColetandoDados({ ctx, estadoRow, texto }) {
       servicoId,
       dataISO: lista.data,
       periodo: lista.periodo || 'manha',
+      horaPreferida: lista.hora_preferida || null,
       resumoIA: lista.resumo_ia || {},
     });
   }
@@ -329,7 +400,7 @@ async function handleColetandoDados({ ctx, estadoRow, texto }) {
  * Busca horários livres e oferece 3 opções.
  * Muda estado para aguardando_escolha.
  */
-async function listarEOferecerHorarios({ ctx, profissionalId, servicoId, dataISO, periodo, resumoIA, prefixo = '' }) {
+async function listarEOferecerHorarios({ ctx, profissionalId, servicoId, dataISO, periodo, horaPreferida = null, resumoIA, prefixo = '' }) {
   const slots = await agendaService.listarHorariosLivresUnidade({
     unidadeId: ctx.unidade_id,
     profissionalId,
@@ -344,7 +415,17 @@ async function listarEOferecerHorarios({ ctx, profissionalId, servicoId, dataISO
     return reply('Não encontrei horários livres nesse período 😕 Quer tentar outro dia ou período?');
   }
 
-  const opcoes = slots.slice(0, 3).map((s, i) => ({
+  let slotsOrdenados = slots;
+  const alvoMin = hhmmToMinutes(horaPreferida);
+  if (alvoMin !== null) {
+    slotsOrdenados = [...slots].sort((a, b) => {
+      const aMin = hhmmToMinutes(formatHoraTZ(a.inicio, ctx.timezone));
+      const bMin = hhmmToMinutes(formatHoraTZ(b.inicio, ctx.timezone));
+      return Math.abs(aMin - alvoMin) - Math.abs(bMin - alvoMin);
+    });
+  }
+
+  const opcoes = slotsOrdenados.slice(0, 3).map((s, i) => ({
     idx: i + 1,
     inicio: s.inicio,
     fim: s.fim,
@@ -357,6 +438,7 @@ async function listarEOferecerHorarios({ ctx, profissionalId, servicoId, dataISO
       token: token(),
       data: dataISO,
       periodo,
+      hora_preferida: horaPreferida,
       servico_id: servicoId,
       profissional_id: profissionalId,
       opcoes,
@@ -371,7 +453,7 @@ async function listarEOferecerHorarios({ ctx, profissionalId, servicoId, dataISO
 /**
  * Com serviço resolvido, tenta resolver profissional e listar horários.
  */
-async function continuarComServico({ ctx, servicoId, dataISO, periodo, resumoIA }) {
+async function continuarComServico({ ctx, servicoId, dataISO, periodo, horaPreferida = null, resumoIA }) {
   const profs = await profissionalResolver.listarProfissionaisPorServico({
     unidadeId: ctx.unidade_id,
     servicoId,
@@ -390,6 +472,7 @@ async function continuarComServico({ ctx, servicoId, dataISO, periodo, resumoIA 
         token: token(),
         data: dataISO,
         periodo,
+        hora_preferida: horaPreferida,
         servico_id: servicoId,
         profissionais: profs,
         resumo_ia: resumoIA,
@@ -406,6 +489,7 @@ async function continuarComServico({ ctx, servicoId, dataISO, periodo, resumoIA 
     servicoId,
     dataISO,
     periodo,
+    horaPreferida,
     resumoIA,
   });
 }
@@ -415,8 +499,11 @@ async function continuarComServico({ ctx, servicoId, dataISO, periodo, resumoIA 
  * Resolve data → serviço → profissional → horários.
  */
 async function handleNovoAgendamento({ ctx, entities, resumoIA, texto }) {
+  const inferred = inferEntitiesFromText(texto, ctx.timezone);
+  const horario = entities.horario || inferred.horario || null;
+
   // 1) Resolver DATA
-  let dataISO = entities.data;
+  let dataISO = entities.data || inferred.data;
   if (dataISO && !/^\d{4}-\d{2}-\d{2}$/.test(dataISO)) {
     // IA retornou algo que não é YYYY-MM-DD (ex: "amanhã")
     dataISO = parseDataPtBR(dataISO, { timezone: ctx.timezone }) || null;
@@ -426,22 +513,49 @@ async function handleNovoAgendamento({ ctx, entities, resumoIA, texto }) {
     dataISO = parseDataPtBR(texto, { timezone: ctx.timezone });
   }
 
-  const periodo = entities.periodo || 'manha';
+  const periodo = entities.periodo || inferred.periodo || periodoFromHora(horario) || 'manha';
 
   if (!dataISO) {
+    const servicoHint = entities.servico || inferred.servico;
     await conversaEstado.upsert(ctx.conversa_id, {
       estado: 'coletando_dados',
-      ultima_lista: { falta: 'data', periodo, resumo_ia: resumoIA },
+      ultima_lista: { falta: 'data', periodo, hora_preferida: horario, servico_hint: servicoHint, resumo_ia: resumoIA },
     });
-    return reply('Pra qual dia você quer agendar? (ex: amanhã, sexta, 20/02)');
+    if (servicoHint) {
+      return reply(
+        `Beleza! Você quer ${servicoHint} 👍\n` +
+        'Qual dia você prefere?\n' +
+        'Pode ser assim:\n' +
+        '- amanhã\n' +
+        '- sexta\n' +
+        '- 20/03'
+      );
+    }
+    return reply(
+      'Qual dia você prefere?\n' +
+      'Pode ser assim:\n' +
+      '- amanhã\n' +
+      '- sexta\n' +
+      '- 20/03'
+    );
   }
 
   // 2) Resolver SERVIÇO
   let servicoId = null;
-  if (entities.servico) {
+  const servicoTexto = entities.servico || inferred.servico;
+  if (servicoTexto) {
     const svc = await servicoResolver.resolverPorNome({
       unidadeId: ctx.unidade_id,
-      nomeServico: entities.servico,
+      nomeServico: servicoTexto,
+    });
+    servicoId = svc?.id || null;
+  }
+
+  // Fallback: tenta mapear serviço direto no texto completo
+  if (!servicoId) {
+    const svc = await servicoResolver.resolverPorNome({
+      unidadeId: ctx.unidade_id,
+      nomeServico: texto,
     });
     servicoId = svc?.id || null;
   }
@@ -450,7 +564,10 @@ async function handleNovoAgendamento({ ctx, entities, resumoIA, texto }) {
     const svcs = await servicoResolver.listarServicosDaUnidade({ unidadeId: ctx.unidade_id });
     if (svcs.length === 0) {
       await conversaEstado.clear(ctx.conversa_id);
-      return reply('Não encontrei serviços disponíveis nessa unidade 😕');
+      return reply(
+        'Ainda não encontrei serviços ativos nessa unidade 😕\n' +
+        'Peça para o responsável vincular serviços a profissionais ativos e eu já sigo com o agendamento.'
+      );
     }
     if (svcs.length === 1) {
       servicoId = svcs[0].id;
@@ -461,6 +578,7 @@ async function handleNovoAgendamento({ ctx, entities, resumoIA, texto }) {
           falta: 'servico',
           data: dataISO,
           periodo,
+          hora_preferida: horario,
           servicos: svcs.map(s => ({ id: s.id, nome: s.nome })),
           resumo_ia: resumoIA,
         },
@@ -470,7 +588,7 @@ async function handleNovoAgendamento({ ctx, entities, resumoIA, texto }) {
   }
 
   // 3) Resolver PROFISSIONAL → HORÁRIOS
-  return await continuarComServico({ ctx, servicoId, dataISO, periodo, resumoIA });
+  return await continuarComServico({ ctx, servicoId, dataISO, periodo, horaPreferida: horario, resumoIA });
 }
 
 // ===================== Endpoint principal =====================
@@ -600,13 +718,22 @@ router.post('/message-router', async (req, res) => {
 
     // ─── 8) Estado livre / fallback: chamar IA ───
     if (!response) {
-      const ia = await classificarMensagemIA({ text });
+      const ia = await classificarMensagemIA({ text, timezone });
+      const inferred = inferEntitiesFromText(text, timezone);
+      const mergedEntities = {
+        data: ia?.entities?.data || inferred.data || null,
+        periodo: ia?.entities?.periodo || inferred.periodo || null,
+        servico: ia?.entities?.servico || inferred.servico || null,
+        profissional: ia?.entities?.profissional || null,
+        horario: ia?.entities?.horario || inferred.horario || null,
+      };
+      const shouldHandleAgendamento = ia.intent === 'novo_agendamento' || hasSinalAgendamento(text);
 
-      if (ia.intent === 'novo_agendamento') {
+      if (shouldHandleAgendamento) {
         response = await handleNovoAgendamento({
           ctx,
-          entities: ia.entities || {},
-          resumoIA: ia,
+          entities: mergedEntities,
+          resumoIA: { ...ia, entities: mergedEntities },
           texto: text,
         });
       } else {

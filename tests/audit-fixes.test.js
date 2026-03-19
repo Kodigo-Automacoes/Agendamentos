@@ -7,7 +7,7 @@
 const assert = require('assert');
 
 // ===================== Utils =====================
-const { parseDataPtBR, hojeNoTimezone } = require('../utils/dateParser');
+const { parseDataPtBR, parseHoraPtBR, periodoFromHora, hojeNoTimezone } = require('../utils/dateParser');
 const { parseEscolha, parseConfirmacao, parseCancelarFluxo } = require('../utils/flowParser');
 
 let passed = 0;
@@ -89,6 +89,12 @@ test('amanhã com timezone SP', () => {
   assert.match(result, /^\d{4}-\d{2}-\d{2}$/);
 });
 
+test('frase completa com amanhã retorna data', () => {
+  const result = parseDataPtBR('quero agendar corte amanhã às 14h', { timezone: 'America/Sao_Paulo' });
+  assert.ok(result, 'deveria retornar data mesmo em frase longa');
+  assert.match(result, /^\d{4}-\d{2}-\d{2}$/);
+});
+
 test('amanhã backward-compatible (string date)', () => {
   const result = parseDataPtBR('amanhã', '2026-02-20');
   // 2026-02-20 + 1 = 2026-02-21
@@ -132,6 +138,26 @@ test('dia 25 com timezone', () => {
 
 test('ISO date preservado', () => {
   assert.strictEqual(parseDataPtBR('2026-03-15', { timezone: 'America/Sao_Paulo' }), '2026-03-15');
+});
+
+test('parseHora 14h', () => {
+  assert.strictEqual(parseHoraPtBR('corte amanhã às 14h'), '14:00');
+});
+
+test('parseHora 16:30', () => {
+  assert.strictEqual(parseHoraPtBR('16:30'), '16:30');
+});
+
+test('periodoFromHora manhã', () => {
+  assert.strictEqual(periodoFromHora('09:00'), 'manha');
+});
+
+test('periodoFromHora tarde', () => {
+  assert.strictEqual(periodoFromHora('14:00'), 'tarde');
+});
+
+test('periodoFromHora noite', () => {
+  assert.strictEqual(periodoFromHora('19:00'), 'noite');
 });
 
 test('30/02 inválido retorna null', () => {

@@ -12,6 +12,17 @@ const DIAS_SEMANA = {
   'sabado': 6, 'sábado': 6, sab: 6, 'sáb': 6,
 };
 
+function toWordString(t) {
+  const normalized = norm(t).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return ` ${normalized} `;
+}
+
+function hasWordOrPhrase(textWords, phrase) {
+  const phraseWords = toWordString(phrase).trim();
+  if (!phraseWords) return false;
+  return textWords.includes(` ${phraseWords} `);
+}
+
 /**
  * Remove acentos e normaliza texto para comparação.
  */
@@ -48,6 +59,47 @@ function hojeNoTimezone(timezone) {
   }).format(new Date());
 }
 
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+/**
+ * Extrai horário em formato HH:mm a partir de texto pt-BR.
+ * Exemplos: "14h", "14:30", "às 16", "as 9h15"
+ * @returns {string|null}
+ */
+function parseHoraPtBR(texto) {
+  if (!texto) return null;
+  const t = norm(texto);
+
+  // 14:30 ou 14h30
+  let m = t.match(/\b([01]?\d|2[0-3])\s*[:h]\s*([0-5]\d)\b/);
+  if (m) return `${pad2(m[1])}:${pad2(m[2])}`;
+
+  // 14h
+  m = t.match(/\b([01]?\d|2[0-3])\s*h(?:oras?)?\b/);
+  if (m) return `${pad2(m[1])}:00`;
+
+  // às 14 / as 14
+  m = t.match(/\b(?:as)\s*([01]?\d|2[0-3])\b/);
+  if (m) return `${pad2(m[1])}:00`;
+
+  return null;
+}
+
+/**
+ * Converte HH:mm para período de agenda.
+ * @returns {"manha"|"tarde"|"noite"|null}
+ */
+function periodoFromHora(horaHHmm) {
+  if (!horaHHmm || !/^\d{2}:\d{2}$/.test(horaHHmm)) return null;
+  const [h, m] = horaHHmm.split(':').map(Number);
+  const total = h * 60 + m;
+  if (total < 12 * 60) return 'manha';
+  if (total < 18 * 60) return 'tarde';
+  return 'noite';
+}
+
 /**
  * Converte texto em pt-BR para data YYYY-MM-DD.
  * @param {string} texto - ex: "amanhã", "sexta", "20/02", "2026-03-01"
@@ -59,6 +111,7 @@ function parseDataPtBR(texto, opcoesOuHoje = null) {
 
   const raw = texto.toString().trim();
   const t = norm(raw);
+  const textWords = toWordString(raw);
 
   let ref;
   if (opcoesOuHoje && typeof opcoesOuHoje === 'object' && !(opcoesOuHoje instanceof Date) && opcoesOuHoje.timezone) {
@@ -77,24 +130,23 @@ function parseDataPtBR(texto, opcoesOuHoje = null) {
   if (isoMatch) return isoMatch[0];
 
   // --- hoje ---
-  if (t === 'hoje') return formatYMD(ref);
+  if (hasWordOrPhrase(textWords, 'hoje')) return formatYMD(ref);
 
   // --- amanhã ---
-  if (t === 'amanha') {
+  if (hasWordOrPhrase(textWords, 'amanha')) {
     ref.setDate(ref.getDate() + 1);
     return formatYMD(ref);
   }
 
   // --- depois de amanhã ---
-  if (t.includes('depois de amanha') || t.includes('depois de amanha')) {
+  if (hasWordOrPhrase(textWords, 'depois de amanha')) {
     ref.setDate(ref.getDate() + 2);
     return formatYMD(ref);
   }
 
   // --- Dia da semana (próxima ocorrência) ---
   for (const [nome, dow] of Object.entries(DIAS_SEMANA)) {
-    const nomeNorm = norm(nome);
-    if (t === nomeNorm || t.includes(nomeNorm)) {
+    if (hasWordOrPhrase(textWords, nome)) {
       const diff = (dow - ref.getDay() + 7) % 7 || 7; // sempre próxima
       ref.setDate(ref.getDate() + diff);
       return formatYMD(ref);
@@ -137,4 +189,4 @@ function parseDataPtBR(texto, opcoesOuHoje = null) {
   return null;
 }
 
-module.exports = { parseDataPtBR, formatYMD, hojeNoTimezone };
+module.exports = { parseDataPtBR, parseHoraPtBR, periodoFromHora, formatYMD, hojeNoTimezone };
