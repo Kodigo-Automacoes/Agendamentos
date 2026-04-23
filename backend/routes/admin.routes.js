@@ -16,6 +16,266 @@ function send(res, status, payload) {
   return res.status(status).json(payload);
 }
 
+function maskEnv(v) {
+  if (!v) return null;
+  const s = String(v);
+  if (s.length <= 8) return "***";
+  return s.slice(0, 4) + "…" + s.slice(-3);
+}
+
+// ------------------------------------------------------------
+// GET /api/admin/diagnostico — visão geral do que está OK / faltando
+//
+// Pra debugar o webhook em produção. Retorna:
+//   - env relevante (mascarada)
+//   - estado dos canais (instance_key, número, ativo)
+//   - serviços + profissionais ativos da unidade default
+//   - estado da Evolution API (conexão da instância)
+// ------------------------------------------------------------
+router.get("/api/admin/diagnostico", async (req, res) => {
+  const empresaId = process.env.DEFAULT_EMPRESA_ID;
+  const unidadeId = process.env.DEFAULT_UNIDADE_ID;
+
+  const out = {
+    env: {
+      DB_HOST: process.env.DB_HOST,
+      DB_NAME: process.env.DB_NAME,
+      DEFAULT_EMPRESA_ID: empresaId || null,
+      DEFAULT_UNIDADE_ID: unidadeId || null,
+      AUTO_PROVISION_CANAL: process.env.AUTO_PROVISION_CANAL,
+      EVOLUTION_BASE_URL: process.env.EVOLUTION_BASE_URL,
+      EVOLUTION_INSTANCE_NAME: process.env.EVOLUTION_INSTANCE_NAME,
+      EVOLUTION_API_KEY: maskEnv(process.env.EVOLUTION_API_KEY),
+      EVOLUTION_SEND_ENABLED: process.env.EVOLUTION_SEND_ENABLED,
+      EVOLUTION_AUTO_SEND: process.env.EVOLUTION_AUTO_SEND,
+      OPENAI_API_KEY: maskEnv(process.env.OPENAI_API_KEY),
+      OPENAI_MODEL: process.env.OPENAI_MODEL,
+      PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL,
+    },
+    db: {},
+    evolution: {},
+    checklist: [],
+  };
+
+  try {
+    out.db.canais = (await pool.query(
+      `SELECT id, empresa_id, unidade_id, numero_e164, provedor, instance_key, ativo
+         FROM core.canal_whatsapp ORDER BY ativo DESC, updated_at DESC`
+    )).rows;
+
+    if (empresaId && unidadeId) {
+      out.db.empresa = (await pool.query("SELECT id, nome, ativo FROM core.empresa WHERE id=$1", [empresaId])).rows[0] || null;
+      out.db.unidade = (await pool.query("SELECT id, nome FROM core.unidade WHERE id=$1", [unidadeId])).rows[0] || null;
+      out.db.config_unidade = (await pool.query("SELECT * FROM agenda.config_unidade WHERE unidade_id=$1", [unidadeId])).rows[0] || null;
+      out.db.funcionamento = (await pool.query("SELECT dow, abre, fecha, ativo FROM agenda.funcionamento_semanal WHERE unidade_id=$1 ORDER BY dow", [unidadeId])).rows;
+      out.db.janelas_periodo = (await pool.query("SELECT periodo, inicio, fim FROM agenda.janela_periodo WHERE unidade_id=$1", [unidadeId])).rows;
+
+      out.db.servicos = (await pool.query(
+        `SELECT id, nome, duracao_padrao_min, preco_padrao, ativo FROM agenda.servico WHERE empresa_id=$1 ORDER BY nome`,
+        [empresaId]
+      )).rows;
+      out.db.profissionais = (await pool.query(
+        `SELECT id, nome, ativo FROM agenda.profissional WHERE empresa_id=$1 AND unidade_id=$2 ORDER BY nome`,
+        [empresaId, unidadeId]
+      )).rows;
+      out.db.vinculos_servico_prof = (await pool.query(
+        `SELECT ps.profissional_id, p.nome AS profissional, ps.servico_id, s.nome AS servico, ps.ativo
+           FROM agenda.profissional_servico ps
+           JOIN agenda.profissional p ON p.id = ps.profissional_id
+           JOIN agenda.servico s ON s.id = ps.servico_id
+          WHERE ps.empresa_id=$1 AND ps.unidade_id=$2`,
+        [empresaId, unidadeId]
+      )).rows;
+      out.db.disponibilidade = (await pool.query(
+        `SELECT profissional_id, dia_semana, hora_inicio, hora_fim, ativo
+           FROM agenda.disponibilidade_semanal
+          WHERE empresa_id=$1 AND unidade_id=$2 ORDER BY profissional_id, dia_semana`,
+        [empresaId, unidadeId]
+      )).rows;
+    }
+  } catch (err) {
+    out.db.erro = err.message;
+  }
+
+  // Checklist humano
+  const c = out.checklist;
+  if (!out.env.DEFAULT_EMPRESA_ID) c.push("FALTA: DEFAULT_EMPRESA_ID no .env");
+  if (!out.env.DEFAULT_UNIDADE_ID) c.push("FALTA: DEFAULT_UNIDADE_ID no .env");
+  if (!out.env.EVOLUTION_API_KEY) c.push("FALTA: EVOLUTION_API_KEY no .env");
+  if (!out.env.EVOLUTION_INSTANCE_NAME) c.push("FALTA: EVOLUTION_INSTANCE_NAME no .env");
+  if (out.env.EVOLUTION_SEND_ENABLED && out.env.EVOLUTION_SEND_ENABLED !== "true") c.push("EVOLUTION_SEND_ENABLED não é 'true' — backend NÃO vai enviar resposta no WhatsApp");
+  if (out.env.EVOLUTION_AUTO_SEND && out.env.EVOLUTION_AUTO_SEND !== "true") c.push("EVOLUTION_AUTO_SEND não é 'true' — backend só envia se o caller pedir");
+  if (!out.env.OPENAI_API_KEY) c.push("AVISO: OPENAI_API_KEY ausente — IA cai no fallback determinístico (ainda funciona)");
+
+  if (out.db.canais && !out.db.canais.find((k) => k.instance_key === process.env.EVOLUTION_INSTANCE_NAME)) {
+    c.push(`FALTA: nenhum canal com instance_key='${process.env.EVOLUTION_INSTANCE_NAME}' (a auto-adoção tenta resolver no 1º webhook, mas se quiser pode rodar /api/admin/seed-demo)`);
+  }
+  if ((out.db.servicos || []).filter((s) => s.ativo).length === 0) {
+    c.push("FALTA: nenhum serviço ativo — rode POST /api/admin/seed-demo");
+  }
+  if ((out.db.profissionais || []).filter((p) => p.ativo).length === 0) {
+    c.push("FALTA: nenhum profissional ativo — rode POST /api/admin/seed-demo");
+  }
+  if ((out.db.vinculos_servico_prof || []).filter((v) => v.ativo).length === 0) {
+    c.push("FALTA: nenhum vínculo profissional↔serviço ativo — rode POST /api/admin/seed-demo");
+  }
+  if (!out.db.config_unidade) c.push("FALTA: agenda.config_unidade — rode POST /api/admin/seed-demo");
+  if ((out.db.disponibilidade || []).filter((d) => d.ativo).length === 0) {
+    c.push("FALTA: nenhuma disponibilidade_semanal ativa — rode POST /api/admin/seed-demo");
+  }
+  if (c.length === 0) c.push("Tudo verde ✅ — webhook deve responder normalmente.");
+
+  // Tenta consultar a Evolution
+  try {
+    const base = (process.env.EVOLUTION_BASE_URL || "").replace(/\/+$/, "");
+    const apikey = process.env.EVOLUTION_API_KEY;
+    const inst = process.env.EVOLUTION_INSTANCE_NAME;
+    if (base && apikey && inst) {
+      const r = await fetch(`${base}/instance/connectionState/${encodeURIComponent(inst)}`, {
+        headers: { apikey, Accept: "application/json" },
+        signal: AbortSignal.timeout(5000),
+      });
+      out.evolution.connectionState = await r.json().catch(() => null);
+      const wh = await fetch(`${base}/webhook/find/${encodeURIComponent(inst)}`, {
+        headers: { apikey, Accept: "application/json" },
+        signal: AbortSignal.timeout(5000),
+      });
+      out.evolution.webhook = await wh.json().catch(() => null);
+    } else {
+      out.evolution.skipped = "Faltam EVOLUTION_BASE_URL/API_KEY/INSTANCE_NAME";
+    }
+  } catch (err) {
+    out.evolution.erro = err.message;
+  }
+
+  return send(res, 200, out);
+});
+
+// ------------------------------------------------------------
+// POST /api/admin/seed-demo — popula serviço/profissional/vínculo
+// na unidade default. Idempotente. Equivale à migration 005.
+// ------------------------------------------------------------
+router.post("/api/admin/seed-demo", async (req, res) => {
+  const empresaId = process.env.DEFAULT_EMPRESA_ID;
+  const unidadeId = process.env.DEFAULT_UNIDADE_ID;
+  if (!empresaId || !unidadeId) {
+    return send(res, 400, { erro: "Configure DEFAULT_EMPRESA_ID e DEFAULT_UNIDADE_ID no .env antes." });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // 1) Config da unidade
+    await client.query(
+      `INSERT INTO agenda.config_unidade
+         (unidade_id, timezone, intervalo_entre_atendimentos_min, passo_oferta_min, antecedencia_min, max_dias_futuro)
+       VALUES ($1, 'America/Sao_Paulo', 10, 15, 60, 30)
+       ON CONFLICT (unidade_id) DO NOTHING`,
+      [unidadeId]
+    );
+
+    // 2) Funcionamento semanal (seg-sex 08-18, sáb 08-12, dom fechado)
+    const dias = [
+      [0, "00:00", "00:01", false],
+      [1, "08:00", "18:00", true],
+      [2, "08:00", "18:00", true],
+      [3, "08:00", "18:00", true],
+      [4, "08:00", "18:00", true],
+      [5, "08:00", "18:00", true],
+      [6, "08:00", "12:00", true],
+    ];
+    for (const [dow, abre, fecha, ativo] of dias) {
+      await client.query(
+        `INSERT INTO agenda.funcionamento_semanal (unidade_id, dow, abre, fecha, ativo)
+         VALUES ($1,$2,$3,$4,$5)
+         ON CONFLICT (unidade_id, dow) DO UPDATE
+           SET abre=EXCLUDED.abre, fecha=EXCLUDED.fecha, ativo=EXCLUDED.ativo`,
+        [unidadeId, dow, abre, fecha, ativo]
+      );
+    }
+
+    // 3) Janelas de período
+    const periodos = [
+      ["manha", "08:00", "12:00"],
+      ["tarde", "13:00", "18:00"],
+      ["noite", "18:00", "21:00"],
+    ];
+    for (const [periodo, ini, fim] of periodos) {
+      await client.query(
+        `INSERT INTO agenda.janela_periodo (unidade_id, periodo, inicio, fim)
+         VALUES ($1,$2,$3,$4)
+         ON CONFLICT (unidade_id, periodo) DO UPDATE
+           SET inicio=EXCLUDED.inicio, fim=EXCLUDED.fim`,
+        [unidadeId, periodo, ini, fim]
+      );
+    }
+
+    // 4) Serviço
+    const svc = await client.query(
+      `INSERT INTO agenda.servico (empresa_id, nome, duracao_padrao_min, preco_padrao, ativo)
+       VALUES ($1, 'Corte de cabelo', 30, 40, true)
+       ON CONFLICT (empresa_id, nome) DO UPDATE
+         SET ativo=true, duracao_padrao_min=EXCLUDED.duracao_padrao_min
+       RETURNING id, nome`,
+      [empresaId]
+    );
+    const servicoId = svc.rows[0].id;
+
+    // 5) Profissional
+    const prof = await client.query(
+      `INSERT INTO agenda.profissional (empresa_id, unidade_id, nome, ativo)
+       VALUES ($1, $2, 'Profissional Demo', true)
+       ON CONFLICT (empresa_id, unidade_id, nome) DO UPDATE SET ativo=true
+       RETURNING id, nome`,
+      [empresaId, unidadeId]
+    );
+    const profissionalId = prof.rows[0].id;
+
+    // 6) Vínculo
+    await client.query(
+      `INSERT INTO agenda.profissional_servico
+         (empresa_id, unidade_id, profissional_id, servico_id, ativo)
+       VALUES ($1,$2,$3,$4,true)
+       ON CONFLICT (profissional_id, servico_id) DO UPDATE
+         SET ativo=true, empresa_id=EXCLUDED.empresa_id, unidade_id=EXCLUDED.unidade_id`,
+      [empresaId, unidadeId, profissionalId, servicoId]
+    );
+
+    // 7) Disponibilidade do profissional (seg-sáb)
+    for (let dow = 1; dow <= 6; dow++) {
+      const fim = dow === 6 ? "12:00" : "18:00";
+      await client.query(
+        `INSERT INTO agenda.disponibilidade_semanal
+            (empresa_id, unidade_id, profissional_id, dia_semana, hora_inicio, hora_fim, ativo)
+         SELECT $1,$2,$3,$4,'08:00'::time, $5::time, true
+         WHERE NOT EXISTS (
+           SELECT 1 FROM agenda.disponibilidade_semanal
+            WHERE profissional_id=$3 AND dia_semana=$4
+              AND hora_inicio='08:00'::time AND hora_fim=$5::time
+         )`,
+        [empresaId, unidadeId, profissionalId, dow, fim]
+      );
+    }
+
+    await client.query("COMMIT");
+    return send(res, 200, {
+      ok: true,
+      empresa_id: empresaId,
+      unidade_id: unidadeId,
+      servico_id: servicoId,
+      profissional_id: profissionalId,
+      msg: "Seed aplicado. Manda mensagem no WhatsApp pra testar.",
+    });
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    console.error("[seed-demo]", err);
+    return send(res, 500, { erro: err.message });
+  } finally {
+    client.release();
+  }
+});
+
 // ------------------------------------------------------------
 // GET /api/admin/dashboard/stats — métricas globais do SaaS
 // ------------------------------------------------------------
