@@ -2,7 +2,9 @@ const express = require("express");
 const router = express.Router();
 const { pool } = require("../config/db");
 
-router.get("/", (req, res) => {
+// Mantido para compatibilidade com monitoramento externo (curl $API_URL/health).
+// O "/" agora serve a landing page — ver app.js + public/index.html.
+router.get("/health", (req, res) => {
   res.json({ status: "API OK" });
 });
 

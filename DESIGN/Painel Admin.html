@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin – Kodigo</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07090e;
+  --bg2: #0d1018;
+  --sidebar: #0a0c13;
+  --card: #131720;
+  --card2: #181e2a;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.10);
+  --text: #e2e8f0;
+  --text2: #64748b;
+  --text3: #94a3b8;
+  --accent: #4ecca3;
+  --accent-dim: rgba(78,204,163,0.10);
+  --accent-glow: rgba(78,204,163,0.15);
+  --purple: #7b6ef6;
+  --purple-dim: rgba(123,110,246,0.10);
+  --red: #f87171;
+  --red-dim: rgba(248,113,113,0.10);
+  --yellow: #fbbf24;
+  --yellow-dim: rgba(251,191,36,0.10);
+  --sidebar-w: 220px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: var(--sidebar-w); background: var(--sidebar);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; flex-shrink: 0;
+}
+.sidebar-logo {
+  padding: 20px 20px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-mark {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--red); display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: white;
+}
+.logo-text { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 700; }
+.admin-badge {
+  margin-left: auto; padding: 2px 8px; border-radius: 4px;
+  background: var(--red-dim); border: 1px solid rgba(248,113,113,.2);
+  font-size: 10px; font-weight: 700; color: var(--red); text-transform: uppercase; letter-spacing: .5px;
+}
+.sidebar-nav { flex: 1; padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+.nav-label { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text2); padding: 10px 10px 6px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 8px; cursor: pointer;
+  transition: all .15s; font-size: 13px; font-weight: 500; color: var(--text3);
+  text-decoration: none; border: 1px solid transparent;
+}
+.nav-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
+.nav-item.active { background: var(--accent-dim); color: var(--accent); border-color: rgba(78,204,163,.12); }
+.nav-icon { width: 18px; text-align: center; font-size: 14px; flex-shrink: 0; }
+.nav-badge { margin-left: auto; background: var(--red); color: white; font-size: 10px; font-weight: 700; border-radius: 10px; padding: 1px 7px; }
+.sidebar-user {
+  padding: 14px 14px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.user-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--red), var(--purple));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: white; flex-shrink: 0;
+}
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-role { font-size: 10px; color: var(--red); font-weight: 600; }
+
+/* ─── MAIN ─── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.topbar {
+  height: 56px; display: flex; align-items: center;
+  padding: 0 24px; gap: 12px;
+  border-bottom: 1px solid var(--border); background: var(--bg2); flex-shrink: 0;
+}
+.topbar-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 700; }
+.topbar-sep { width: 1px; height: 20px; background: var(--border2); }
+.topbar-sub { font-size: 12px; color: var(--text3); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.icon-btn {
+  width: 34px; height: 34px; border-radius: 8px;
+  background: transparent; border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 14px; transition: all .15s;
+}
+.icon-btn:hover { background: var(--card); }
+
+/* screen tabs */
+.screen-tabs {
+  display: flex; gap: 4px; padding: 10px 24px;
+  border-bottom: 1px solid var(--border); background: var(--bg); flex-shrink: 0;
+}
+.screen-tab {
+  padding: 6px 14px; border-radius: 6px;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  transition: all .15s; color: var(--text3); border: 1px solid transparent;
+}
+.screen-tab.active { background: var(--accent-dim); color: var(--accent); border-color: rgba(78,204,163,.15); }
+.screen-tab:hover:not(.active) { color: var(--text); background: var(--card); }
+
+.content { flex: 1; overflow-y: auto; padding: 24px; }
+
+/* ─── SHARED COMPONENTS ─── */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px; position: relative; overflow: hidden;
+}
+.stat-card::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--card-line, var(--accent));
+}
+.stat-lbl { font-size: 10px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+.stat-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 32px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+.stat-delta { font-size: 11px; color: var(--text3); }
+.up { color: var(--accent); }
+.down { color: var(--red); }
+
+.panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.panel-header {
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-title { font-size: 13px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; }
+.panel-action { font-size: 12px; color: var(--accent); cursor: pointer; font-weight: 500; background: none; border: none; font-family: 'Poppins', sans-serif; }
+.panel-body { padding: 16px 20px; }
+
+.badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 100px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+.badge-green { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(78,204,163,.2); }
+.badge-red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,113,113,.2); }
+.badge-yellow { background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(251,191,36,.2); }
+.badge-purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(123,110,246,.2); }
+.badge-gray { background: rgba(255,255,255,.05); color: var(--text3); border: 1px solid var(--border); }
+
+/* table */
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th {
+  text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text2); padding: 10px 14px;
+  border-bottom: 1px solid var(--border); background: var(--bg2);
+}
+.data-table td {
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+  font-size: 13px; vertical-align: middle;
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(255,255,255,.02); }
+.row-avatar {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.company-cell { display: flex; align-items: center; gap: 10px; }
+.company-name { font-size: 13px; font-weight: 600; }
+.company-url { font-size: 11px; color: var(--text3); }
+.actions { display: flex; gap: 6px; }
+.action-btn {
+  padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  cursor: pointer; border: 1px solid var(--border); background: transparent;
+  color: var(--text3); font-family: 'Poppins', sans-serif; transition: all .15s;
+}
+.action-btn:hover { border-color: var(--accent); color: var(--accent); }
+.action-btn.danger:hover { border-color: var(--red); color: var(--red); }
+
+/* search+filter bar */
+.filter-bar { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; }
+.search-input {
+  flex: 1; padding: 8px 14px; border-radius: 8px;
+  background: var(--bg2); border: 1px solid var(--border2);
+  color: var(--text); font-family: 'Poppins', sans-serif; font-size: 13px;
+}
+.search-input:focus { outline: none; border-color: rgba(78,204,163,.3); }
+.filter-select {
+  padding: 8px 12px; border-radius: 8px;
+  background: var(--bg2); border: 1px solid var(--border2);
+  color: var(--text3); font-family: 'Poppins', sans-serif; font-size: 12px;
+}
+.btn-primary {
+  padding: 8px 18px; border-radius: 8px; background: var(--accent); color: #07090e;
+  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700;
+  border: none; cursor: pointer; white-space: nowrap; transition: all .2s;
+}
+.btn-primary:hover { background: #5ed9b0; }
+
+/* chart bars */
+.chart-container { display: flex; flex-direction: column; gap: 8px; }
+.chart-bar-row { display: flex; align-items: center; gap: 10px; }
+.chart-bar-label { font-size: 11px; color: var(--text3); width: 80px; flex-shrink: 0; text-align: right; }
+.chart-bar-track { flex: 1; height: 8px; background: var(--bg2); border-radius: 4px; overflow: hidden; }
+.chart-bar-fill { height: 100%; border-radius: 4px; background: var(--accent); transition: width .4s; }
+.chart-bar-val { font-size: 11px; color: var(--text3); width: 40px; flex-shrink: 0; }
+
+/* log line */
+.log-line {
+  display: flex; align-items: center; gap: 12px; padding: 10px 0;
+  border-bottom: 1px solid var(--border); font-size: 12px;
+}
+.log-line:last-child { border-bottom: none; }
+.log-time { font-family: monospace; font-size: 11px; color: var(--text2); flex-shrink: 0; width: 80px; }
+.log-company { font-size: 11px; color: var(--purple); font-weight: 600; flex-shrink: 0; width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-msg { flex: 1; color: var(--text3); }
+.log-msg strong { color: var(--text); font-weight: 500; }
+
+/* ticket */
+.ticket {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px; margin-bottom: 10px;
+  transition: border-color .15s; cursor: pointer;
+}
+.ticket:hover { border-color: var(--border2); }
+.ticket-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.ticket-title { font-size: 13px; font-weight: 600; flex: 1; }
+.ticket-meta { display: flex; align-items: center; gap: 8px; }
+.ticket-company { font-size: 11px; color: var(--text3); }
+.ticket-time { font-size: 10px; color: var(--text2); }
+.ticket-body { font-size: 12px; color: var(--text3); line-height: 1.6; }
+.ticket-footer { display: flex; align-items: center; gap: 8px; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; }
+.ticket-assignee { display: flex; align-items: center; gap: 6px; }
+.ticket-assignee-av { width: 20px; height: 20px; border-radius: 50%; background: var(--purple-dim); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: var(--purple); }
+.btn-reply { margin-left: auto; padding: 5px 14px; border-radius: 6px; background: var(--accent-dim); border: 1px solid rgba(78,204,163,.2); color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif; }
+
+/* plan card */
+.plan-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
+.plan-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px;
+}
+.plan-card.featured { border-color: rgba(78,204,163,.3); background: var(--card2); }
+.plan-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin-bottom: 8px; }
+.plan-price { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+.plan-price span { font-size: 13px; font-weight: 400; color: var(--text3); }
+.plan-count { font-size: 12px; color: var(--text3); margin-bottom: 14px; }
+.plan-bar-track { height: 6px; background: var(--bg2); border-radius: 4px; overflow: hidden; }
+.plan-bar-fill { height: 100%; border-radius: 4px; }
+
+/* mrr line chart mock */
+.mrr-chart { display: flex; align-items: flex-end; gap: 6px; height: 80px; padding-top: 8px; }
+.mrr-bar { flex: 1; border-radius: 4px 4px 0 0; background: linear-gradient(to top, var(--accent), rgba(78,204,163,.3)); transition: opacity .2s; }
+.mrr-bar:hover { opacity: .8; }
+
+/* ─── TWEAKS ─── */
+#tweaks-panel {
+  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+  background: var(--card2); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 20px; width: 220px;
+  display: none; flex-direction: column; gap: 14px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.5); font-family: 'Poppins', sans-serif;
+}
+#tweaks-panel h3 { font-size: 12px; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+.tweak-row { display: flex; flex-direction: column; gap: 5px; }
+.tweak-row label { font-size: 11px; color: var(--text3); }
+.tweak-colors { display: flex; gap: 8px; }
+.tweak-swatch { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: border-color .2s; }
+.tweak-swatch.active { border-color: white; }
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,.75); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: #131720; border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 16px; width: 480px; max-width: 95vw;
+  box-shadow: 0 32px 80px rgba(0,0,0,.6);
+  transform: translateY(16px) scale(.98); transition: transform .2s;
+  max-height: 90vh; overflow-y: auto;
+}
+.modal-overlay.open .modal { transform: none; }
+.modal-header {
+  padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 700; }
+.modal-close {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: rgba(255,255,255,.06); border: none; color: #94a3b8;
+  font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.modal-close:hover { background: rgba(255,255,255,.1); color: #e2e8f0; }
+.modal-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.modal-footer {
+  padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex; gap: 10px; justify-content: flex-end;
+}
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-label { font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; }
+.form-input, .form-select-modal, .form-textarea {
+  padding: 10px 14px; border-radius: 8px;
+  background: #0d1018; border: 1px solid rgba(255,255,255,0.10);
+  color: #e2e8f0; font-family: 'Poppins', sans-serif; font-size: 13px;
+  transition: border-color .15s; width: 100%;
+}
+.form-input:focus, .form-select-modal:focus, .form-textarea:focus {
+  outline: none; border-color: rgba(78,204,163,.4);
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-hint { font-size: 11px; color: #64748b; }
+.btn-cancel {
+  padding: 9px 20px; border-radius: 8px;
+  background: transparent; border: 1px solid rgba(255,255,255,.1);
+  color: #94a3b8; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all .15s;
+}
+.btn-cancel:hover { border-color: rgba(255,255,255,.2); color: #e2e8f0; }
+.btn-save {
+  padding: 9px 24px; border-radius: 8px;
+  background: #4ecca3; color: #07090e;
+  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700;
+  border: none; cursor: pointer; transition: all .2s;
+}
+.btn-save:hover { background: #5ed9b0; }
+.btn-modal-danger {
+  padding: 9px 20px; border-radius: 8px; margin-right: auto;
+  background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.2);
+  color: #f87171; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all .15s;
+}
+.btn-modal-danger:hover { background: rgba(248,113,113,.2); }
+.form-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 4px 0; }
+
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">K</div>
+    <div class="logo-text">Kodigo</div>
+    <div class="admin-badge">Admin</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Visão geral</div>
+    <a class="nav-item active" onclick="setScreen('dashboard')">
+      <span class="nav-icon">◈</span> Dashboard
+    </a>
+    <div class="nav-label">Gestão</div>
+    <a class="nav-item" onclick="setScreen('empresas')">
+      <span class="nav-icon">🏢</span> Empresas
+    </a>
+    <a class="nav-item" onclick="setScreen('usuarios')">
+      <span class="nav-icon">◉</span> Usuários
+    </a>
+    <a class="nav-item" onclick="setScreen('planos')">
+      <span class="nav-icon">◇</span> Planos e Cobranças
+    </a>
+    <div class="nav-label">Sistema</div>
+    <a class="nav-item" onclick="setScreen('logs')">
+      <span class="nav-icon">≡</span> Logs e Auditoria
+    </a>
+    <a class="nav-item" onclick="setScreen('suporte')">
+      <span class="nav-icon">💬</span> Suporte
+      <span class="nav-badge">5</span>
+    </a>
+  </nav>
+  <div class="sidebar-user">
+    <div class="user-avatar">VC</div>
+    <div class="user-info">
+      <div class="user-name">Você, dono</div>
+      <div class="user-role">Super Admin</div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Dashboard</div>
+    <div class="topbar-sep"></div>
+    <div class="topbar-sub" id="topbar-sub">Visão geral do SaaS</div>
+    <div class="topbar-right">
+      <div class="icon-btn">🔔</div>
+      <div class="icon-btn">⚙</div>
+    </div>
+  </div>
+
+  <div class="screen-tabs">
+    <div class="screen-tab active" onclick="setScreen('dashboard')">Dashboard</div>
+    <div class="screen-tab" onclick="setScreen('empresas')">Empresas</div>
+    <div class="screen-tab" onclick="setScreen('usuarios')">Usuários</div>
+    <div class="screen-tab" onclick="setScreen('planos')">Planos</div>
+    <div class="screen-tab" onclick="setScreen('logs')">Logs</div>
+    <div class="screen-tab" onclick="setScreen('suporte')">Suporte</div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══ DASHBOARD ══ -->
+    <div id="screen-dashboard">
+      <div class="stats-row">
+        <div class="stat-card" style="--card-line:var(--accent)">
+          <div class="stat-lbl">Empresas ativas</div>
+          <div class="stat-val" style="color:var(--accent)">47</div>
+          <div class="stat-delta"><span class="up">↑ +3 este mês</span></div>
+        </div>
+        <div class="stat-card" style="--card-line:var(--purple)">
+          <div class="stat-lbl">MRR</div>
+          <div class="stat-val" style="color:var(--purple)">R$7.4k</div>
+          <div class="stat-delta"><span class="up">↑ +12% vs mês anterior</span></div>
+        </div>
+        <div class="stat-card" style="--card-line:var(--yellow)">
+          <div class="stat-lbl">Agendamentos/mês</div>
+          <div class="stat-val" style="color:var(--yellow)">2.1k</div>
+          <div class="stat-delta">nas últimas 4 semanas</div>
+        </div>
+        <div class="stat-card" style="--card-line:var(--red)">
+          <div class="stat-lbl">Inadimplentes</div>
+          <div class="stat-val" style="color:var(--red)">2</div>
+          <div class="stat-delta"><span class="down">Cobranças pendentes</span></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 320px;gap:16px">
+        <!-- MRR chart -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Crescimento MRR</div>
+            <select class="filter-select" style="font-size:11px;padding:4px 10px">
+              <option>Últimos 12 meses</option>
+              <option>Últimos 6 meses</option>
+            </select>
+          </div>
+          <div class="panel-body">
+            <div style="display:flex;align-items:flex-end;gap:8px;height:100px;margin-bottom:8px">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div class="mrr-bar" style="height:25%"></div>
+                <div style="font-size:9px;color:var(--text2)">Mai</div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div class="mrr-bar" style="height:35%"></div>
+                <div style="font-size:9px;color:var(--text2)">Jun</div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div class="mrr-bar" style="height:40%"></div>
+                <div style="font-size:9px;color:var(--text2)">Jul</div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div class="mrr-bar" style="height:48%"></div>
+                <div style="font-size:9px;color:var(--text2)">Ago</div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div class="mrr-bar" style="height:52%"></div>
+                <div style="font-size:9px;color:var(--text2)">Set</div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div class="mrr-bar" style="height:55%"></div>
+                <div style="font-size:9px;color:var(--text2)">Out</div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div class="mrr-bar" style="height:60%"></div>
+                <div style="font-size:9px;color:var(--text2)">Nov</div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div class="mrr-bar" style="height:65%"></div>
+                <div style="font-size:9px;color:var(--text2)">Dez</div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div class="mrr-bar" style="height:72%"></div>
+                <div style="font-size:9px;color:var(--text2)">Jan</div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div class="mrr-bar" style="height:80%"></div>
+                <div style="font-size:9px;color:var(--text2)">Fev</div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div class="mrr-bar" style="height:88%"></div>
+                <div style="font-size:9px;color:var(--text2)">Mar</div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div class="mrr-bar" style="height:100%;opacity:1"></div>
+                <div style="font-size:9px;color:var(--accent);font-weight:600">Abr</div>
+              </div>
+            </div>
+            <!-- Plan breakdown -->
+            <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);font-weight:600;margin-bottom:10px">Distribuição de planos</div>
+              <div class="chart-container">
+                <div class="chart-bar-row">
+                  <div class="chart-bar-label">Profissional</div>
+                  <div class="chart-bar-track"><div class="chart-bar-fill" style="width:60%"></div></div>
+                  <div class="chart-bar-val">28 emp.</div>
+                </div>
+                <div class="chart-bar-row">
+                  <div class="chart-bar-label">Básico</div>
+                  <div class="chart-bar-track"><div class="chart-bar-fill" style="width:32%;background:var(--purple)"></div></div>
+                  <div class="chart-bar-val">15 emp.</div>
+                </div>
+                <div class="chart-bar-row">
+                  <div class="chart-bar-label">Premium</div>
+                  <div class="chart-bar-track"><div class="chart-bar-fill" style="width:9%;background:var(--yellow)"></div></div>
+                  <div class="chart-bar-val">4 emp.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Atividade recente -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Atividade recente</div>
+            <button class="panel-action">Ver logs →</button>
+          </div>
+          <div class="panel-body" style="padding:0 20px">
+            <div class="log-line">
+              <div class="log-time">14:32</div>
+              <div class="log-company">Barbearia Barros</div>
+              <div class="log-msg"><strong>Agendamento criado</strong> via WhatsApp</div>
+              <div class="badge badge-green">ok</div>
+            </div>
+            <div class="log-line">
+              <div class="log-time">14:28</div>
+              <div class="log-company">Clínica Estética Sol</div>
+              <div class="log-msg"><strong>Nova empresa</strong> cadastrada</div>
+              <div class="badge badge-purple">novo</div>
+            </div>
+            <div class="log-line">
+              <div class="log-time">13:55</div>
+              <div class="log-company">Salão Style</div>
+              <div class="log-msg"><strong>Pagamento</strong> recebido · R$197</div>
+              <div class="badge badge-green">pago</div>
+            </div>
+            <div class="log-line">
+              <div class="log-time">13:40</div>
+              <div class="log-company">Barbearia Dom</div>
+              <div class="log-msg"><strong>Cancelamento</strong> de agendamento</div>
+              <div class="badge badge-yellow">aviso</div>
+            </div>
+            <div class="log-line">
+              <div class="log-time">12:10</div>
+              <div class="log-company">Nail Studio</div>
+              <div class="log-msg"><strong>Erro de IA</strong> · fallback ativado</div>
+              <div class="badge badge-red">erro</div>
+            </div>
+            <div class="log-line">
+              <div class="log-time">11:45</div>
+              <div class="log-company">Top Cuts</div>
+              <div class="log-msg"><strong>WhatsApp</strong> reconectado</div>
+              <div class="badge badge-green">ok</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ EMPRESAS ══ -->
+    <div id="screen-empresas" style="display:none">
+      <div class="filter-bar">
+        <input class="search-input" type="text" placeholder="🔍  Buscar empresa...">
+        <select class="filter-select"><option>Todos os planos</option><option>Básico</option><option>Profissional</option><option>Premium</option></select>
+        <select class="filter-select"><option>Todos os status</option><option>Ativo</option><option>Inativo</option></select>
+        <button class="btn-primary" onclick="openModal('modal-empresa')">+ Nova empresa</button>
+      </div>
+      <div class="panel">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Empresa</th>
+              <th>Plano</th>
+              <th>Profissionais</th>
+              <th>Agend./mês</th>
+              <th>MRR</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="company-cell"><div class="row-avatar" style="background:rgba(78,204,163,.15);color:var(--accent)">BB</div><div><div class="company-name">Barbearia Barros</div><div class="company-url">barros.kodigo.app</div></div></div></td>
+              <td><div class="badge badge-purple">Profissional</div></td>
+              <td>3</td><td>187</td><td>R$197</td>
+              <td><div class="badge badge-green">● Ativo</div></td>
+              <td><div class="actions"><button class="action-btn" onclick="openModal('modal-empresa','Barbearia Barros')">Editar</button><button class="action-btn">Entrar</button><button class="action-btn danger">Desativar</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="company-cell"><div class="row-avatar" style="background:var(--purple-dim);color:var(--purple)">CE</div><div><div class="company-name">Clínica Estética Sol</div><div class="company-url">sol.kodigo.app</div></div></div></td>
+              <td><div class="badge badge-green">Básico</div></td>
+              <td>1</td><td>64</td><td>R$97</td>
+              <td><div class="badge badge-green">● Ativo</div></td>
+              <td><div class="actions"><button class="action-btn">Editar</button><button class="action-btn">Entrar</button><button class="action-btn danger">Desativar</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="company-cell"><div class="row-avatar" style="background:var(--yellow-dim);color:var(--yellow)">SS</div><div><div class="company-name">Salão Style</div><div class="company-url">style.kodigo.app</div></div></div></td>
+              <td><div class="badge badge-purple">Profissional</div></td>
+              <td>5</td><td>312</td><td>R$197</td>
+              <td><div class="badge badge-green">● Ativo</div></td>
+              <td><div class="actions"><button class="action-btn">Editar</button><button class="action-btn">Entrar</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="company-cell"><div class="row-avatar" style="background:var(--red-dim);color:var(--red)">BD</div><div><div class="company-name">Barbearia Dom</div><div class="company-url">dom.kodigo.app</div></div></div></td>
+              <td><div class="badge badge-yellow">Premium</div></td>
+              <td>8</td><td>498</td><td>R$397</td>
+              <td><div class="badge badge-red">● Inadimplente</div></td>
+              <td><div class="actions"><button class="action-btn">Editar</button><button class="action-btn">Cobrar</button><button class="action-btn danger">Suspender</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="company-cell"><div class="row-avatar" style="background:rgba(255,255,255,.06);color:var(--text3)">NS</div><div><div class="company-name">Nail Studio</div><div class="company-url">nail.kodigo.app</div></div></div></td>
+              <td><div class="badge badge-green">Básico</div></td>
+              <td>1</td><td>38</td><td>R$97</td>
+              <td><div class="badge badge-gray">● Inativo</div></td>
+              <td><div class="actions"><button class="action-btn">Editar</button><button class="action-btn">Reativar</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="company-cell"><div class="row-avatar" style="background:rgba(78,204,163,.15);color:var(--accent)">TC</div><div><div class="company-name">Top Cuts</div><div class="company-url">topcuts.kodigo.app</div></div></div></td>
+              <td><div class="badge badge-purple">Profissional</div></td>
+              <td>4</td><td>221</td><td>R$197</td>
+              <td><div class="badge badge-green">● Ativo</div></td>
+              <td><div class="actions"><button class="action-btn">Editar</button><button class="action-btn">Entrar</button></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ USUÁRIOS ══ -->
+    <div id="screen-usuarios" style="display:none">
+      <div class="filter-bar">
+        <input class="search-input" type="text" placeholder="🔍  Buscar usuário...">
+        <select class="filter-select"><option>Todas as empresas</option><option>Barbearia Barros</option></select>
+        <select class="filter-select"><option>Todos os papéis</option><option>Super Admin</option><option>Gerente</option><option>Operador</option></select>
+        <button class="btn-primary" onclick="openModal('modal-usuario')">+ Novo usuário</button>
+      </div>
+      <div class="panel">
+        <table class="data-table">
+          <thead>
+            <tr><th>Usuário</th><th>Empresa</th><th>Papel</th><th>Último acesso</th><th>Status</th><th>Ações</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="company-cell"><div class="row-avatar" style="background:linear-gradient(135deg,var(--red),var(--purple));border-radius:50%">VC</div><div><div class="company-name">Você</div><div class="company-url">admin@kodigo.app</div></div></div></td>
+              <td><div style="font-size:12px;color:var(--text3)">—</div></td>
+              <td><div class="badge badge-red">Super Admin</div></td>
+              <td style="color:var(--text3);font-size:12px">Agora</td>
+              <td><div class="badge badge-green">● Ativo</div></td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td><div class="company-cell"><div class="row-avatar" style="background:rgba(78,204,163,.15);color:var(--accent);border-radius:50%">JB</div><div><div class="company-name">João Barros</div><div class="company-url">joao@barros.com</div></div></div></td>
+              <td><div style="font-size:12px">Barbearia Barros</div></td>
+              <td><div class="badge badge-yellow">Gerente</div></td>
+              <td style="color:var(--text3);font-size:12px">Há 2h</td>
+              <td><div class="badge badge-green">● Ativo</div></td>
+              <td><div class="actions"><button class="action-btn">Editar</button><button class="action-btn danger">Revogar</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="company-cell"><div class="row-avatar" style="background:var(--purple-dim);color:var(--purple);border-radius:50%">CM</div><div><div class="company-name">Carlos Mendes</div><div class="company-url">carlos@barros.com</div></div></div></td>
+              <td><div style="font-size:12px">Barbearia Barros</div></td>
+              <td><div class="badge badge-purple">Operador</div></td>
+              <td style="color:var(--text3);font-size:12px">Ontem</td>
+              <td><div class="badge badge-green">● Ativo</div></td>
+              <td><div class="actions"><button class="action-btn">Editar</button><button class="action-btn danger">Revogar</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="company-cell"><div class="row-avatar" style="background:var(--yellow-dim);color:var(--yellow);border-radius:50%">AS</div><div><div class="company-name">Ana Silva</div><div class="company-url">ana@style.com</div></div></div></td>
+              <td><div style="font-size:12px">Salão Style</div></td>
+              <td><div class="badge badge-yellow">Gerente</div></td>
+              <td style="color:var(--text3);font-size:12px">Há 5h</td>
+              <td><div class="badge badge-green">● Ativo</div></td>
+              <td><div class="actions"><button class="action-btn">Editar</button><button class="action-btn danger">Revogar</button></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ PLANOS ══ -->
+    <div id="screen-planos" style="display:none">
+      <div class="plan-cards">
+        <div class="plan-card">
+          <div class="plan-name">Básico</div>
+          <div class="plan-price">R$97<span>/mês</span></div>
+          <div class="plan-count">15 empresas</div>
+          <div class="plan-bar-track"><div class="plan-bar-fill" style="width:32%;background:var(--accent)"></div></div>
+        </div>
+        <div class="plan-card featured">
+          <div class="plan-name">Profissional</div>
+          <div class="plan-price" style="color:var(--accent)">R$197<span>/mês</span></div>
+          <div class="plan-count">28 empresas · <span style="color:var(--accent)">59%</span></div>
+          <div class="plan-bar-track"><div class="plan-bar-fill" style="width:60%;background:var(--accent)"></div></div>
+        </div>
+        <div class="plan-card">
+          <div class="plan-name">Premium</div>
+          <div class="plan-price" style="color:var(--purple)">R$397<span>/mês</span></div>
+          <div class="plan-count">4 empresas</div>
+          <div class="plan-bar-track"><div class="plan-bar-fill" style="width:9%;background:var(--purple)"></div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Histórico de cobranças</div>
+          <select class="filter-select" style="font-size:11px;padding:4px 10px"><option>Abril 2026</option></select>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr><th>Empresa</th><th>Plano</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Ações</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="company-cell"><div class="row-avatar" style="background:rgba(78,204,163,.15);color:var(--accent)">BB</div><div class="company-name">Barbearia Barros</div></div></td>
+              <td><div class="badge badge-purple">Profissional</div></td>
+              <td style="font-weight:600">R$197</td>
+              <td style="color:var(--text3);font-size:12px">01/04/2026</td>
+              <td><div class="badge badge-green">Pago</div></td>
+              <td><button class="action-btn">Ver recibo</button></td>
+            </tr>
+            <tr>
+              <td><div class="company-cell"><div class="row-avatar" style="background:var(--red-dim);color:var(--red)">BD</div><div class="company-name">Barbearia Dom</div></div></td>
+              <td><div class="badge badge-yellow">Premium</div></td>
+              <td style="font-weight:600">R$397</td>
+              <td style="color:var(--red);font-size:12px">05/04/2026</td>
+              <td><div class="badge badge-red">Atrasado</div></td>
+              <td><div class="actions"><button class="action-btn">Cobrar</button><button class="action-btn danger">Suspender</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="company-cell"><div class="row-avatar" style="background:var(--yellow-dim);color:var(--yellow)">SS</div><div class="company-name">Salão Style</div></div></td>
+              <td><div class="badge badge-purple">Profissional</div></td>
+              <td style="font-weight:600">R$197</td>
+              <td style="color:var(--text3);font-size:12px">03/04/2026</td>
+              <td><div class="badge badge-green">Pago</div></td>
+              <td><button class="action-btn">Ver recibo</button></td>
+            </tr>
+            <tr>
+              <td><div class="company-cell"><div class="row-avatar" style="background:var(--purple-dim);color:var(--purple)">CE</div><div class="company-name">Clínica Estética Sol</div></div></td>
+              <td><div class="badge badge-green">Básico</div></td>
+              <td style="font-weight:600">R$97</td>
+              <td style="color:var(--yellow);font-size:12px">23/04/2026</td>
+              <td><div class="badge badge-yellow">Pendente</div></td>
+              <td><button class="action-btn">Cobrar</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ LOGS ══ -->
+    <div id="screen-logs" style="display:none">
+      <div class="filter-bar">
+        <input class="search-input" type="text" placeholder="🔍  Filtrar por empresa, ação ou usuário...">
+        <select class="filter-select"><option>Todas as empresas</option></select>
+        <select class="filter-select"><option>Todos os tipos</option><option>Agendamento</option><option>Erro</option><option>Login</option><option>WhatsApp</option></select>
+        <select class="filter-select"><option>Hoje</option><option>Últimos 7 dias</option></select>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Log de atividades</div>
+          <span style="font-size:11px;color:var(--text3)">Atualização automática · 1 min</span>
+        </div>
+        <div class="panel-body" style="padding:0 20px;font-family:monospace">
+          <div class="log-line"><div class="log-time">14:38:02</div><div class="log-company">Barbearia Barros</div><div class="log-msg">POST /message-router · <strong>agendamento criado</strong> · ID #4821</div><div class="badge badge-green">200</div></div>
+          <div class="log-line"><div class="log-time">14:35:17</div><div class="log-company">Salão Style</div><div class="log-msg">WebSocket · <strong>WhatsApp msg recebida</strong> · IA processando</div><div class="badge badge-purple">ws</div></div>
+          <div class="log-line"><div class="log-time">14:32:44</div><div class="log-company">Clínica Sol</div><div class="log-msg">GET /disponibilidade · <strong>3 slots retornados</strong> · 12ms</div><div class="badge badge-green">200</div></div>
+          <div class="log-line"><div class="log-time">14:28:09</div><div class="log-company">Nail Studio</div><div class="log-msg">POST /ia/interpretar · <strong>timeout IA</strong> · fallback ativado</div><div class="badge badge-red">500</div></div>
+          <div class="log-line"><div class="log-time">14:25:33</div><div class="log-company">Top Cuts</div><div class="log-msg">PUT /agendamento/:id · <strong>cancelamento</strong> · fila notificada</div><div class="badge badge-yellow">fila</div></div>
+          <div class="log-line"><div class="log-time">14:22:01</div><div class="log-company">Barbearia Dom</div><div class="log-msg">POST /message-router · <strong>agendamento criado</strong> · ID #4820</div><div class="badge badge-green">200</div></div>
+          <div class="log-line"><div class="log-time">14:18:55</div><div class="log-company">Salão Style</div><div class="log-msg">Evolution API · <strong>instância reconectada</strong> · instance_key #37</div><div class="badge badge-purple">ws</div></div>
+          <div class="log-line"><div class="log-time">14:10:22</div><div class="log-company">Barbearia Barros</div><div class="log-msg">Auth · <strong>login</strong> · joao@barros.com · IP 177.x.x.x</div><div class="badge badge-gray">auth</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SUPORTE ══ -->
+    <div id="screen-suporte" style="display:none">
+      <div class="filter-bar">
+        <input class="search-input" type="text" placeholder="🔍  Buscar ticket...">
+        <select class="filter-select"><option>Todos os status</option><option>Aberto</option><option>Em andamento</option><option>Resolvido</option></select>
+        <select class="filter-select"><option>Todas as prioridades</option><option>Urgente</option><option>Médio</option><option>Baixo</option></select>
+        <div style="margin-left:auto;display:flex;gap:8px;font-size:12px;color:var(--text3)">
+          <span class="badge badge-red">5 abertos</span>
+          <span class="badge badge-green">2 resolvidos hoje</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:10px">Abertos</div>
+          <div class="ticket">
+            <div class="ticket-header">
+              <div><div class="badge badge-red" style="margin-bottom:6px">Urgente</div><div class="ticket-title">WhatsApp parou de responder — instância offline</div></div>
+            </div>
+            <div class="ticket-meta" style="margin-bottom:8px"><div class="ticket-company">Barbearia Dom</div><div class="ticket-time">Há 12 min</div></div>
+            <div class="ticket-body">A IA parou de responder mensagens. O número aparece como offline no EasyPanel. Precisamos urgente, temos clientes tentando agendar.</div>
+            <div class="ticket-footer">
+              <div class="ticket-assignee"><div class="ticket-assignee-av">VC</div><span style="font-size:11px;color:var(--text3)">Atribuído a você</span></div>
+              <button class="btn-reply">Responder</button>
+            </div>
+          </div>
+          <div class="ticket" style="opacity:.85">
+            <div class="badge badge-yellow" style="margin-bottom:6px">Médio</div>
+            <div class="ticket-title" style="margin-bottom:6px">Agenda mostrando horários errados</div>
+            <div class="ticket-meta" style="margin-bottom:8px"><div class="ticket-company">Salão Style</div><div class="ticket-time">Há 2h</div></div>
+            <div class="ticket-body">O painel está mostrando agendamentos com 1h de diferença. Possível problema de timezone.</div>
+            <div class="ticket-footer">
+              <div class="ticket-assignee"><div class="ticket-assignee-av" style="background:var(--accent-dim);color:var(--accent)">—</div><span style="font-size:11px;color:var(--text3)">Sem responsável</span></div>
+              <button class="btn-reply">Atribuir</button>
+            </div>
+          </div>
+          <div class="ticket" style="opacity:.7">
+            <div class="badge badge-gray" style="margin-bottom:6px">Baixo</div>
+            <div class="ticket-title" style="margin-bottom:6px">Como adicionar segundo profissional?</div>
+            <div class="ticket-meta" style="margin-bottom:8px"><div class="ticket-company">Clínica Sol</div><div class="ticket-time">Há 5h</div></div>
+            <div class="ticket-body">Não estou encontrando onde cadastrar um segundo profissional no painel.</div>
+            <div class="ticket-footer">
+              <button class="btn-reply" style="margin-left:0">Responder</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:10px">Resolvidos hoje</div>
+          <div class="ticket" style="opacity:.5;border-color:rgba(78,204,163,.1)">
+            <div class="badge badge-green" style="margin-bottom:6px">Resolvido</div>
+            <div class="ticket-title" style="margin-bottom:6px">Erro na confirmação automática</div>
+            <div class="ticket-meta"><div class="ticket-company">Top Cuts</div><div class="ticket-time">Resolvido às 11:30</div></div>
+          </div>
+          <div class="ticket" style="opacity:.5;border-color:rgba(78,204,163,.1)">
+            <div class="badge badge-green" style="margin-bottom:6px">Resolvido</div>
+            <div class="ticket-title" style="margin-bottom:6px">Como exportar relatório em PDF?</div>
+            <div class="ticket-meta"><div class="ticket-company">Nail Studio</div><div class="ticket-time">Resolvido às 09:15</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TWEAKS -->
+<div id="tweaks-panel">
+  <h3>Tweaks</h3>
+  <div class="tweak-row">
+    <label>Cor de destaque</label>
+    <div class="tweak-colors">
+      <div class="tweak-swatch active" style="background:#4ecca3" data-color="#4ecca3" data-dim="rgba(78,204,163,0.10)"></div>
+      <div class="tweak-swatch" style="background:#7b6ef6" data-color="#7b6ef6" data-dim="rgba(123,110,246,0.10)"></div>
+      <div class="tweak-swatch" style="background:#3b9eff" data-color="#3b9eff" data-dim="rgba(59,158,255,0.10)"></div>
+      <div class="tweak-swatch" style="background:#ff6b35" data-color="#ff6b35" data-dim="rgba(255,107,53,0.10)"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const screens = ['dashboard','empresas','usuarios','planos','logs','suporte'];
+const titles = { dashboard:'Dashboard', empresas:'Empresas', usuarios:'Usuários', planos:'Planos e Cobranças', logs:'Logs e Auditoria', suporte:'Suporte / Tickets' };
+const subs = { dashboard:'Visão geral do SaaS', empresas:'Gerencie seus clientes', usuarios:'Controle de acesso', planos:'Cobranças e receita', logs:'Rastreabilidade total', suporte:'Atendimento ao cliente' };
+
+function setScreen(name) {
+  screens.forEach(s => {
+    const el = document.getElementById('screen-' + s);
+    if (el) el.style.display = s === name ? '' : 'none';
+  });
+  document.querySelectorAll('.screen-tab').forEach((t, i) => t.classList.toggle('active', screens[i] === name));
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.getAttribute('onclick')?.includes(name));
+  });
+  document.getElementById('topbar-title').textContent = titles[name] || name;
+  document.getElementById('topbar-sub').textContent = subs[name] || '';
+  localStorage.setItem('kodigo_admin_screen', name);
+}
+
+const saved = localStorage.getItem('kodigo_admin_screen');
+if (saved && screens.includes(saved)) setScreen(saved);
+
+window.addEventListener('message', e => {
+  if (e.data?.type === '__activate_edit_mode') document.getElementById('tweaks-panel').style.display = 'flex';
+  if (e.data?.type === '__deactivate_edit_mode') document.getElementById('tweaks-panel').style.display = 'none';
+});
+window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+
+document.querySelectorAll('.tweak-swatch').forEach(sw => {
+  sw.addEventListener('click', () => {
+    document.querySelectorAll('.tweak-swatch').forEach(s => s.classList.remove('active'));
+    sw.classList.add('active');
+    document.documentElement.style.setProperty('--accent', sw.dataset.color);
+    document.documentElement.style.setProperty('--accent-dim', sw.dataset.dim);
+  });
+});
+
+function openModal(id, name) {
+  const overlay = document.getElementById(id);
+  if (!overlay) return;
+  if (id === 'modal-empresa') {
+    document.getElementById('modal-empresa-title').textContent = name ? 'Editar empresa' : 'Nova empresa';
+    document.getElementById('input-emp-nome').value = name || '';
+    document.getElementById('btn-del-empresa').style.display = name ? '' : 'none';
+  }
+  if (id === 'modal-usuario') {
+    document.getElementById('modal-usuario-title').textContent = name ? 'Editar usuário' : 'Novo usuário';
+    if (document.getElementById('input-usr-nome')) document.getElementById('input-usr-nome').value = name || '';
+    document.getElementById('btn-del-usuario').style.display = name ? '' : 'none';
+  }
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id)?.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+</script>
+
+<!-- ══ MODALS ADMIN ══ -->
+
+<!-- Modal: Nova/Editar Empresa -->
+<div class="modal-overlay" id="modal-empresa" onclick="if(event.target.id==='modal-empresa')closeModal('modal-empresa')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-empresa-title">Nova empresa</div>
+      <button class="modal-close" onclick="closeModal('modal-empresa')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <div class="form-label">Nome da empresa</div>
+        <input class="form-input" type="text" id="input-emp-nome" placeholder="Ex: Barbearia Barros">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">E-mail do responsável</div>
+          <input class="form-input" type="email" placeholder="joao@empresa.com">
+        </div>
+        <div class="form-group">
+          <div class="form-label">WhatsApp</div>
+          <input class="form-input" type="text" placeholder="+55 11 9••••-••••">
+        </div>
+      </div>
+      <div class="form-divider"></div>
+      <div class="form-group">
+        <div class="form-label">Plano</div>
+        <select class="form-select-modal">
+          <option>Básico — R$97/mês</option>
+          <option selected>Profissional — R$197/mês</option>
+          <option>Premium — R$397/mês</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Subdomínio</div>
+          <input class="form-input" type="text" placeholder="barros.kodigo.app">
+          <div class="form-hint">Gerado automaticamente</div>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Status</div>
+          <select class="form-select-modal">
+            <option>Ativo</option>
+            <option>Inativo</option>
+            <option>Trial</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Observações internas</div>
+        <textarea class="form-textarea" placeholder="Notas sobre esse cliente (visível só pra você)..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-danger" id="btn-del-empresa" style="display:none" onclick="closeModal('modal-empresa')">Excluir empresa</button>
+      <button class="btn-cancel" onclick="closeModal('modal-empresa')">Cancelar</button>
+      <button class="btn-save" onclick="closeModal('modal-empresa')">Salvar empresa</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Novo/Editar Usuário -->
+<div class="modal-overlay" id="modal-usuario" onclick="if(event.target.id==='modal-usuario')closeModal('modal-usuario')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-usuario-title">Novo usuário</div>
+      <button class="modal-close" onclick="closeModal('modal-usuario')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <div class="form-label">Nome completo</div>
+        <input class="form-input" type="text" id="input-usr-nome" placeholder="Ex: João Barros">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">E-mail</div>
+          <input class="form-input" type="email" placeholder="joao@empresa.com">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Senha temporária</div>
+          <input class="form-input" type="password" placeholder="••••••••">
+        </div>
+      </div>
+      <div class="form-divider"></div>
+      <div class="form-group">
+        <div class="form-label">Empresa</div>
+        <select class="form-select-modal">
+          <option>— Nenhuma (Admin global) —</option>
+          <option>Barbearia Barros</option>
+          <option>Salão Style</option>
+          <option>Clínica Estética Sol</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Papel / Permissão</div>
+        <select class="form-select-modal">
+          <option>Operador — acesso básico</option>
+          <option>Gerente — acesso completo à empresa</option>
+          <option>Super Admin — acesso total ao sistema</option>
+        </select>
+        <div class="form-hint">Super Admin tem acesso a este painel administrativo.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-danger" id="btn-del-usuario" style="display:none" onclick="closeModal('modal-usuario')">Revogar acesso</button>
+      <button class="btn-cancel" onclick="closeModal('modal-usuario')">Cancelar</button>
+      <button class="btn-save" onclick="closeModal('modal-usuario')">Criar usuário</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmar ação crítica -->
+<div class="modal-overlay" id="modal-confirma" onclick="if(event.target.id==='modal-confirma')closeModal('modal-confirma')">
+  <div class="modal" style="width:380px">
+    <div class="modal-header">
+      <div class="modal-title" style="color:var(--red)" id="modal-confirma-title">Confirmar ação</div>
+      <button class="modal-close" onclick="closeModal('modal-confirma')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:14px;color:var(--text3);line-height:1.6" id="modal-confirma-body">
+        Tem certeza? Essa ação não pode ser desfeita.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-confirma')">Cancelar</button>
+      <button class="btn-modal-danger" style="margin-right:0;border-radius:8px;padding:9px 24px" onclick="closeModal('modal-confirma')" id="btn-confirma-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

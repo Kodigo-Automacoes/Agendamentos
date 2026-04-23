@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(mkdir -p public public/assets)",
+      "Bash(cp \"DESIGN/Landing Page.html\" public/index.html)",
+      "Bash(cp \"DESIGN/Painel do Cliente.html\" public/app.html)",
+      "Bash(cp \"DESIGN/Painel Admin.html\" public/admin.html)"
+    ]
+  }
+}

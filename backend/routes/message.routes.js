@@ -17,6 +17,8 @@ const { getPoliticaContato } = require('../services/politica.service');
 const { getOrCreateConversa } = require('../services/conversa.service');
 const { logMensagem } = require('../services/mensagem.service');
 const { classificarMensagemIA } = require('../services/ia.service');
+const { sendTextViaWuzapi } = require('../services/wuzapi.service');
+const { sendTextViaEvolution } = require('../services/evolution.service');
 const { safeString } = require('../utils/helpers');
 
 // --- Services novos (factory recebe pool) ---
@@ -41,6 +43,161 @@ function extractE164FromJid(jid) {
   if (!jid.includes('@s.whatsapp.net')) return null; // só 1:1
   const match = jid.match(/^(\d+)@/);
   return match ? `+${match[1]}` : null;
+}
+
+function parseBoolean(value, fallback = false) {
+  if (value === undefined || value === null) return fallback;
+  return String(value).toLowerCase() === 'true';
+}
+
+function pickFirstString(values) {
+  for (const v of values) {
+    if (v !== null && v !== undefined && typeof v === 'object') continue;
+    const s = safeString(v);
+    if (s) return s;
+  }
+  return null;
+}
+
+function normalizeIncomingPayload(payload = {}, { providerHint = null } = {}) {
+  const evoData = payload.data || {};
+  const evoKey = evoData.key || {};
+
+  const event = pickFirstString([
+    payload.event,
+    payload.type,
+    payload?.data?.event,
+  ]);
+
+  const remoteJid = pickFirstString([
+    payload.remoteJid,
+    payload?.data?.remoteJid,
+    evoKey.remoteJid,
+    payload?.message?.remoteJid,
+  ]);
+
+  const text = pickFirstString([
+    payload.text,
+    payload.body,
+    payload.message,
+    payload.caption,
+    payload?.data?.text,
+    payload?.data?.body,
+    payload?.message?.text,
+    payload?.message?.body,
+    payload?.message?.conversation,
+    evoData.message?.conversation,
+    evoData.message?.extendedTextMessage?.text,
+    evoData.message?.imageMessage?.caption,
+    evoData.message?.videoMessage?.caption,
+  ]);
+
+  const messageId = pickFirstString([
+    payload.message_id,
+    payload.messageId,
+    payload.id,
+    payload?.data?.id,
+    payload?.message?.id,
+    evoKey.id,
+  ]);
+
+  const messageType = pickFirstString([
+    payload.message_type,
+    payload.messageType,
+    payload.typeMessage,
+    payload?.data?.messageType,
+    evoData.messageType,
+  ]) || 'text';
+
+  const fromRaw = pickFirstString([
+    payload.from_whatsapp_e164,
+    payload.from,
+    payload.sender,
+    payload.author,
+    payload?.data?.from,
+    payload?.data?.sender,
+    payload?.message?.from,
+    extractE164FromJid(remoteJid),
+  ]);
+
+  const fromName = pickFirstString([
+    payload.from_name,
+    payload.senderName,
+    payload.pushName,
+    payload?.data?.pushName,
+    payload?.message?.pushName,
+    evoData.pushName,
+  ]);
+
+  const toNumeroE164 = pickFirstString([
+    payload.to_numero_e164,
+    payload.to,
+    payload?.data?.to,
+    payload.recipient,
+    payload?.message?.to,
+  ]);
+
+  const instanceKey = pickFirstString([
+    payload.instance_key,
+    payload.instance,
+    payload.session,
+    payload?.data?.instance_key,
+    payload?.data?.instance,
+    payload?.message?.instance_key,
+  ]);
+
+  const provedor = pickFirstString([
+    payload.provedor,
+    payload.provider,
+    providerHint,
+  ]) || 'evolution';
+
+  const fromMeRaw = payload?.fromMe ?? payload?.data?.fromMe ?? evoKey.fromMe;
+  const fromMe = typeof fromMeRaw === 'boolean' ? fromMeRaw : parseBoolean(fromMeRaw, false);
+
+  return {
+    provedor,
+    instance_key: instanceKey,
+    to_numero_e164: toNumeroE164,
+    from_raw: fromRaw,
+    from_name: fromName,
+    text,
+    message_id: messageId,
+    message_type: messageType,
+    event,
+    from_me: fromMe,
+    remote_jid: remoteJid,
+    raw_payload: payload?.metadata?.raw ?? payload?.raw ?? payload,
+    payload,
+  };
+}
+
+function shouldProcessInboundMessage(normalized) {
+  if (!normalized?.from_raw) {
+    return { process: false, reason: 'missing_sender' };
+  }
+
+  if (!normalized?.text) {
+    return { process: false, reason: 'missing_text' };
+  }
+
+  if (normalized.from_me) {
+    return { process: false, reason: 'outbound_event' };
+  }
+
+  if (normalized.remote_jid && /@g\.us$|@newsletter$/i.test(normalized.remote_jid)) {
+    return { process: false, reason: 'group_or_newsletter' };
+  }
+
+  if (normalized.event && !['message', 'messages.upsert'].includes(normalized.event)) {
+    // Alguns provedores mandam eventos variados no mesmo webhook; ignoramos os que não são mensagem.
+    const t = normalized.event.toLowerCase();
+    if (!t.includes('message')) {
+      return { process: false, reason: `non_message_event:${normalized.event}` };
+    }
+  }
+
+  return { process: true, reason: 'ok' };
 }
 
 const LISTA_TTL_MINUTOS = 15;
@@ -593,130 +750,391 @@ async function handleNovoAgendamento({ ctx, entities, resumoIA, texto }) {
 
 // ===================== Endpoint principal =====================
 
-router.post('/message-router', async (req, res) => {
+function isApiKeyAuthorized(req) {
+  const key = safeString(req.headers['x-api-key']);
+  return !!process.env.API_KEY && key === process.env.API_KEY;
+}
+
+function isWuzapiWebhookAuthorized(req) {
+  if (isApiKeyAuthorized(req)) return true;
+
+  const configuredSecret = safeString(process.env.WUZAPI_WEBHOOK_SECRET);
+  const providedSecret = pickFirstString([
+    req.headers['x-webhook-secret'],
+    req.query?.webhook_secret,
+    req.query?.secret,
+    req.body?.webhook_secret,
+  ]);
+
+  if (configuredSecret) return providedSecret === configuredSecret;
+
+  // Em dev, permite sem segredo para facilitar setup inicial.
+  return String(process.env.NODE_ENV || '').toLowerCase() !== 'production';
+}
+
+async function maybeDeliverViaWuzapi({
+  response,
+  canalId,
+  instanceKey,
+  destinationE164,
+  enabled,
+}) {
+  const messages = (response?.messages || []).filter((m) => (m?.type || 'text') === 'text' && safeString(m?.text));
+
+  if (!enabled) {
+    return {
+      enabled: false,
+      provider: 'wuzapi',
+      attempted: 0,
+      sent: 0,
+      failed: 0,
+      reason: 'direct_send_disabled',
+    };
+  }
+
+  if (response?.shouldReply !== true || messages.length === 0) {
+    return {
+      enabled: true,
+      provider: 'wuzapi',
+      attempted: 0,
+      sent: 0,
+      failed: 0,
+      reason: 'no_text_messages',
+    };
+  }
+
+  const results = [];
+  let sent = 0;
+
+  for (const m of messages) {
+    try {
+      const sentMsg = await sendTextViaWuzapi({
+        canalId,
+        instanceKey,
+        to: destinationE164,
+        text: m.text,
+      });
+      sent += 1;
+      results.push({
+        ok: true,
+        destination: sentMsg.destination,
+        status: sentMsg.status,
+      });
+    } catch (error) {
+      results.push({
+        ok: false,
+        error: error.message,
+        code: error.code || null,
+        details: error.details || null,
+      });
+    }
+  }
+
+  return {
+    enabled: true,
+    provider: 'wuzapi',
+    attempted: messages.length,
+    sent,
+    failed: messages.length - sent,
+    results,
+  };
+}
+
+/**
+ * Entrega direta via Evolution API (provedor principal).
+ * Tenta enviar cada mensagem de texto via Evolution API.
+ */
+async function maybeDeliverViaEvolution({
+  response,
+  canalId,
+  instanceKey,
+  destinationE164,
+  enabled,
+}) {
+  const messages = (response?.messages || []).filter((m) => (m?.type || 'text') === 'text' && safeString(m?.text));
+
+  if (!enabled) {
+    return {
+      enabled: false,
+      provider: 'evolution',
+      attempted: 0,
+      sent: 0,
+      failed: 0,
+      reason: 'direct_send_disabled',
+    };
+  }
+
+  if (response?.shouldReply !== true || messages.length === 0) {
+    return {
+      enabled: true,
+      provider: 'evolution',
+      attempted: 0,
+      sent: 0,
+      failed: 0,
+      reason: 'no_text_messages',
+    };
+  }
+
+  const results = [];
+  let sent = 0;
+
+  for (const m of messages) {
+    try {
+      const sentMsg = await sendTextViaEvolution({
+        canalId,
+        instanceKey,
+        to: destinationE164,
+        text: m.text,
+      });
+      sent += 1;
+      results.push({
+        ok: true,
+        destination: sentMsg.destination,
+        status: sentMsg.status,
+      });
+    } catch (error) {
+      results.push({
+        ok: false,
+        error: error.message,
+        code: error.code || null,
+        details: error.details || null,
+      });
+    }
+  }
+
+  return {
+    enabled: true,
+    provider: 'evolution',
+    attempted: messages.length,
+    sent,
+    failed: messages.length - sent,
+    results,
+  };
+}
+
+/**
+ * Resolve qual provedor usar para entrega direta de mensagens.
+ * Prioridade: Evolution API > WuzAPI > nenhum.
+ */
+async function resolveAndDeliver({
+  response,
+  canalId,
+  instanceKey,
+  destinationE164,
+  enabled,
+  provedor,
+}) {
+  // Se entrega não habilitada, retorna sem tentar
+  if (!enabled) {
+    return {
+      enabled: false,
+      provider: 'none',
+      attempted: 0,
+      sent: 0,
+      failed: 0,
+      reason: 'direct_send_disabled',
+    };
+  }
+
+  // Tenta Evolution primeiro (provedor principal)
+  const evolutionEnabled = String(process.env.EVOLUTION_SEND_ENABLED || 'true').toLowerCase() === 'true';
+  if (evolutionEnabled && process.env.EVOLUTION_API_KEY) {
+    try {
+      const result = await maybeDeliverViaEvolution({
+        response,
+        canalId,
+        instanceKey,
+        destinationE164,
+        enabled: true,
+      });
+      if (result.sent > 0) return result;
+      // Se falhou tudo, tenta WuzAPI como fallback
+      if (result.failed > 0) {
+        console.warn('[delivery] Evolution falhou, tentando WuzAPI como fallback...');
+      }
+    } catch (err) {
+      console.warn('[delivery] Evolution indisponível, tentando WuzAPI como fallback:', err.message);
+    }
+  }
+
+  // Fallback: WuzAPI
+  const wuzapiEnabled = String(process.env.WUZAPI_SEND_ENABLED || 'false').toLowerCase() === 'true';
+  if (wuzapiEnabled) {
+    return maybeDeliverViaWuzapi({
+      response,
+      canalId,
+      instanceKey,
+      destinationE164,
+      enabled: true,
+    });
+  }
+
+  return {
+    enabled: true,
+    provider: 'none',
+    attempted: 0,
+    sent: 0,
+    failed: 0,
+    reason: 'no_provider_available',
+  };
+}
+
+async function processMessageRouterPayload(payload, options = {}) {
+  const source = options.source || 'message_router';
+  const normalized = normalizeIncomingPayload(payload || {}, { providerHint: options.providerHint || null });
+
   try {
-    const payload = req.body || {};
+    const inbound = shouldProcessInboundMessage(normalized);
+    if (!inbound.process) {
+      return {
+        statusCode: 200,
+        response: {
+          action: 'skip',
+          shouldReply: false,
+          messages: [],
+          debug: {
+            reason: inbound.reason,
+            source,
+            event: normalized.event || null,
+          },
+        },
+      };
+    }
 
-    // ─── Extrair campos do payload ───
-    // Suporta 2 formatos:
-    //   A) N8N mapeado: { message_id, instance_key, from_whatsapp_e164, text, ... }
-    //   B) Evolution API raw: { instance, data: { key: { id, remoteJid }, message, pushName, ... } }
-    // Campos do formato N8N têm prioridade; fallback para formato Evolution nativo.
-
-    const evoData = payload.data || {};
-    const evoKey  = evoData.key || {};
-
-    const provedor       = safeString(payload.provedor) || 'evolution';
-    const instance_key   = safeString(payload.instance_key)
-                        || safeString(payload.instance);         // Evolution raw
-    const to_numero_e164 = safeString(payload.to_numero_e164);
-
-    const from_raw       = safeString(payload.from_whatsapp_e164)
-                        || extractE164FromJid(evoKey.remoteJid); // Evolution raw
-    const from_name      = safeString(payload.from_name)
-                        || safeString(evoData.pushName);         // Evolution raw
-    const text           = safeString(payload.text)
-                        || safeString(evoData.message?.conversation)
-                        || safeString(evoData.message?.extendedTextMessage?.text); // Evolution raw
-    const message_id     = safeString(payload.message_id)
-                        || safeString(evoKey.id);                // Evolution raw
-    const message_type   = safeString(payload.message_type)
-                        || safeString(evoData.messageType) || 'text';
-    const raw_payload    = payload?.metadata?.raw ?? payload?.raw ?? payload;
+    const {
+      provedor,
+      instance_key,
+      to_numero_e164,
+      from_raw,
+      from_name,
+      text,
+      message_id,
+      message_type,
+      raw_payload,
+    } = normalized;
 
     if (!message_id) {
-      console.warn('[message-router] ⚠ message_id ausente no payload — dedup desativada para esta msg');
+      console.warn('[message-router] message_id ausente no payload - dedup desativada para esta msg');
     }
 
-    if (!from_raw || !text) {
-      return res.status(400).json({ erro: 'Campos obrigatórios: from_whatsapp_e164, text' });
-    }
-
-    // ─── Dedup webhook (evita reprocessar mesma mensagem) ───
+    // Dedup webhook (evita reprocessar mesma mensagem)
     if (message_id) {
       const { rows: dupRows } = await pool.query(
         `SELECT 1 FROM integracoes.whatsapp_mensagem WHERE message_id = $1 AND direcao = 'in' LIMIT 1`,
         [message_id]
       );
       if (dupRows.length) {
-        return res.json({ action: 'skip', shouldReply: false, messages: [], debug: { reason: 'duplicate_message', message_id } });
+        return {
+          statusCode: 200,
+          response: {
+            action: 'skip',
+            shouldReply: false,
+            messages: [],
+            debug: { reason: 'duplicate_message', message_id, source },
+          },
+        };
       }
     }
 
     const from_whatsapp_e164 = await normalizarE164(from_raw);
 
-    // ─── 1) Resolver canal → empresa / unidade ───
+    // 1) Resolver canal -> empresa / unidade
     let canal = await resolverCanalWhatsapp({ to_numero_e164, provedor, instance_key });
     if (!canal) canal = await autoProvisionarCanal({ to_numero_e164, provedor, instance_key });
     if (!canal) {
-      return res.json({
-        ...reply(
-          'Esse número/canal ainda não está cadastrado no sistema.\n' +
-          'Peça ao responsável cadastrar o WhatsApp da empresa.'
-        ),
-        debug: { reason: 'canal_nao_encontrado', to_numero_e164, instance_key, provedor },
-      });
+      return {
+        statusCode: 200,
+        response: {
+          ...reply(
+            'Esse numero/canal ainda nao esta cadastrado no sistema.\n' +
+            'Peca ao responsavel cadastrar o WhatsApp da empresa.'
+          ),
+          debug: { reason: 'canal_nao_encontrado', to_numero_e164, instance_key, provedor, source },
+        },
+      };
     }
 
     const { canal_id, empresa_id, unidade_id } = canal;
 
-    // ─── Timezone da unidade (para dateParser e formatação) ───
+    // Timezone da unidade (para dateParser e formatacao)
     const timezone = await agendaService.getTimezoneUnidade(unidade_id);
 
-    // ─── 2) Política de contato ───
+    // 2) Politica de contato
     const modo = await getPoliticaContato({ empresa_id, canal_id, whatsapp_e164: from_whatsapp_e164 });
     if (modo === 'ignorar') {
       await logMensagem({
-        empresa_id, unidade_id, canal_id, cliente_id: null,
-        direcao: 'in', message_id, message_type, texto: text, payload: raw_payload,
+        empresa_id,
+        unidade_id,
+        canal_id,
+        cliente_id: null,
+        direcao: 'in',
+        message_id,
+        message_type,
+        texto: text,
+        payload: raw_payload,
       });
-      return res.json({ action: 'ignore', shouldReply: false, messages: [], debug: { policy: 'ignorar' } });
+      return {
+        statusCode: 200,
+        response: {
+          action: 'ignore',
+          shouldReply: false,
+          messages: [],
+          debug: { policy: 'ignorar', source },
+        },
+      };
     }
 
-    // ─── 3) Get / create cliente ───
+    // 3) Get / create cliente
     const cliente_id = await getOrCreateClienteId({
       empresa_id,
       nome: from_name,
       whatsapp_e164: from_whatsapp_e164,
     });
 
-    // ─── 4) Get / create conversa ───
+    // 4) Get / create conversa
     const conversa = await getOrCreateConversa({ empresa_id, unidade_id, canal_id, cliente_id });
     const conversa_id = conversa?.conversa_id || conversa?.id;
     if (!conversa_id) {
-      return res.json({ ...reply('Erro interno: conversa não resolvida.'), debug: { conversa } });
+      return {
+        statusCode: 200,
+        response: { ...reply('Erro interno: conversa nao resolvida.'), debug: { conversa, source } },
+      };
     }
 
     const ctx = { empresa_id, unidade_id, canal_id, cliente_id, conversa_id, timezone };
 
-    // ─── 5) Log inbound ───
+    // 5) Log inbound
     await logMensagem({
-      empresa_id, unidade_id, canal_id, cliente_id,
-      direcao: 'in', message_id, message_type, texto: text, payload: raw_payload,
+      empresa_id,
+      unidade_id,
+      canal_id,
+      cliente_id,
+      direcao: 'in',
+      message_id,
+      message_type,
+      texto: text,
+      payload: raw_payload,
     });
 
-    // ─── 6) Buscar estado da conversa ───
+    // 6) Buscar estado da conversa
     const estadoRow = await conversaEstado.get(conversa_id);
     const textoNorm = normalizeText(text);
 
     let response = null;
 
-    // ─── 7) State machine — estados guiados (sem chamar IA) ───
+    // 7) State machine - estados guiados (sem chamar IA)
     if (estadoRow?.estado === 'aguardando_escolha') {
       response = await handleAguardandoEscolha({ ctx, estadoRow, texto: textoNorm });
-
     } else if (estadoRow?.estado === 'aguardando_confirmacao') {
       response = await handleAguardandoConfirmacao({ ctx, estadoRow, texto: textoNorm });
-
     } else if (estadoRow?.estado === 'aguardando_profissional') {
       response = await handleAguardandoProfissional({ ctx, estadoRow, texto: textoNorm });
-
     } else if (estadoRow?.estado === 'coletando_dados') {
       response = await handleColetandoDados({ ctx, estadoRow, texto: textoNorm });
-      // null = não conseguiu interpretar → cai para IA abaixo
+      // null = nao conseguiu interpretar -> cai para IA abaixo
     }
 
-    // ─── 8) Estado livre / fallback: chamar IA ───
+    // 8) Estado livre / fallback: chamar IA
     if (!response) {
       const ia = await classificarMensagemIA({ text, timezone });
       const inferred = inferEntitiesFromText(text, timezone);
@@ -737,46 +1155,154 @@ router.post('/message-router', async (req, res) => {
           texto: text,
         });
       } else {
-        // Limpa estado residual e fallback genérico
+        // Limpa estado residual e fallback generico
         if (estadoRow?.estado && estadoRow.estado !== 'idle') {
           await conversaEstado.clear(conversa_id);
         }
         response = reply(
           'Consigo ajudar com agendamentos! 🙂\n' +
-          'Me diz o que você precisa — ex: "quero agendar um corte amanhã de manhã".'
+          'Me diz o que voce precisa - ex: "quero agendar um corte amanha de manha".'
         );
       }
     }
 
-    // ─── 9) Enriquecer resposta com state + debug ───
+    // 9) Enriquecer resposta com state + debug
     const estadoAtual = await conversaEstado.get(conversa_id);
     response.state = {
       estado: estadoAtual?.estado || 'idle',
       intencao_id: estadoAtual?.intencao_id || null,
     };
     response.debug = {
-      empresa_id, unidade_id, canal_id, cliente_id, conversa_id,
+      empresa_id,
+      unidade_id,
+      canal_id,
+      cliente_id,
+      conversa_id,
       policy: modo || 'default',
+      source,
     };
 
-    // ─── 10) Log outbound ───
-    for (const m of (response.messages || [])) {
+    // 10) Log outbound
+    for (const m of response.messages || []) {
       await logMensagem({
-        empresa_id, unidade_id, canal_id, cliente_id,
-        direcao: 'out', message_id: null,
-        message_type: m.type || 'text', texto: m.text, payload: null,
+        empresa_id,
+        unidade_id,
+        canal_id,
+        cliente_id,
+        direcao: 'out',
+        message_id: null,
+        message_type: m.type || 'text',
+        texto: m.text,
+        payload: null,
       });
     }
 
-    return res.json(response);
+    // 11) Entrega direta (Evolution API → WuzAPI fallback, sem N8N)
+    const shouldDeliverNow =
+      options.deliverNow === true ||
+      parseBoolean(payload?.send_direct, false) ||
+      parseBoolean(payload?.send_now, false) ||
+      parseBoolean(process.env.EVOLUTION_AUTO_SEND, false);
 
-  } catch (err) {
-    console.error('[message-router] Erro:', err);
-    return res.status(500).json({
-      action: 'reply',
-      messages: [{ type: 'text', text: 'Erro interno 😕' }],
+    response.delivery = await resolveAndDeliver({
+      response,
+      canalId: canal_id,
+      instanceKey: instance_key,
+      destinationE164: from_whatsapp_e164,
+      enabled: shouldDeliverNow,
+      provedor: provedor,
     });
+
+    return { statusCode: 200, response };
+  } catch (err) {
+    console.error(`[message-router:${source}] Erro:`, err);
+    return {
+      statusCode: 500,
+      response: {
+        action: 'reply',
+        shouldReply: true,
+        messages: [{ type: 'text', text: 'Erro interno 😕' }],
+        debug: { source, error: err.message },
+      },
+    };
   }
+}
+
+router.post('/message-router', async (req, res) => {
+  if (!isApiKeyAuthorized(req)) {
+    return res.status(401).json({ erro: 'unauthorized' });
+  }
+
+  const result = await processMessageRouterPayload(req.body || {}, {
+    source: 'message_router',
+    providerHint: null,
+  });
+  return res.status(result.statusCode).json(result.response);
 });
 
-module.exports = router;
+router.post('/wuzapi/webhook', async (req, res) => {
+  if (!isWuzapiWebhookAuthorized(req)) {
+    return res.status(401).json({ erro: 'unauthorized_webhook' });
+  }
+
+  const result = await processMessageRouterPayload(req.body || {}, {
+    source: 'wuzapi_webhook',
+    providerHint: 'wuzapi',
+    deliverNow: true,
+  });
+  return res.status(result.statusCode).json(result.response);
+});
+
+/**
+ * Webhook endpoint para receber mensagens da Evolution API.
+ * A Evolution envia POST com payload no formato:
+ * {
+ *   "event": "messages.upsert",
+ *   "instance": "nome-da-instancia",
+ *   "data": {
+ *     "key": { "remoteJid": "5511...@s.whatsapp.net", "fromMe": false, "id": "xxx" },
+ *     "message": { "conversation": "texto" },
+ *     "pushName": "Nome do Contato",
+ *     "messageType": "conversation"
+ *   }
+ * }
+ *
+ * Auth: aceita x-api-key (via header configurado no webhook da Evolution)
+ *       ou EVOLUTION_WEBHOOK_SECRET via query param.
+ */
+function isEvolutionWebhookAuthorized(req) {
+  // 1) x-api-key padrão
+  if (isApiKeyAuthorized(req)) return true;
+
+  // 2) Secret via query param ou header
+  const configuredSecret = safeString(process.env.EVOLUTION_WEBHOOK_SECRET);
+  const providedSecret = pickFirstString([
+    req.headers['x-webhook-secret'],
+    req.query?.webhook_secret,
+    req.query?.secret,
+    req.body?.webhook_secret,
+  ]);
+
+  if (configuredSecret) return providedSecret === configuredSecret;
+
+  // Em dev, permite sem segredo para facilitar setup inicial.
+  return String(process.env.NODE_ENV || '').toLowerCase() !== 'production';
+}
+
+router.post('/evolution/webhook', async (req, res) => {
+  if (!isEvolutionWebhookAuthorized(req)) {
+    return res.status(401).json({ erro: 'unauthorized_webhook' });
+  }
+
+  const result = await processMessageRouterPayload(req.body || {}, {
+    source: 'evolution_webhook',
+    providerHint: 'evolution',
+    deliverNow: true,
+  });
+  return res.status(result.statusCode).json(result.response);
+});
+
+module.exports = {
+  router,
+  processMessageRouterPayload,
+};

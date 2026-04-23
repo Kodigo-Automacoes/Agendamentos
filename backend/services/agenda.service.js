@@ -54,7 +54,7 @@ module.exports = (pool) => ({
         $4::uuid,  -- profissional_id
         $5::uuid,  -- servico_id
         $6::timestamptz, -- inicio_sugerido
-        $7::jsonb, -- resumo_ia
+        $7::text,  -- resumo_ia (texto no schema, armazena JSON serializado)
         $8::jsonb  -- contexto
       )
     `;

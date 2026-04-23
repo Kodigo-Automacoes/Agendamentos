@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel – Kodigo</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07090e;
+  --bg2: #0d1018;
+  --sidebar: #0b0e16;
+  --card: #131720;
+  --card2: #181e2a;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.10);
+  --text: #e2e8f0;
+  --text2: #64748b;
+  --text3: #94a3b8;
+  --accent: #4ecca3;
+  --accent-dim: rgba(78,204,163,0.10);
+  --accent-glow: rgba(78,204,163,0.2);
+  --purple: #7b6ef6;
+  --purple-dim: rgba(123,110,246,0.10);
+  --red: #f87171;
+  --red-dim: rgba(248,113,113,0.10);
+  --yellow: #fbbf24;
+  --yellow-dim: rgba(251,191,36,0.10);
+  --sidebar-w: 220px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  flex-shrink: 0;
+  padding: 0;
+}
+.sidebar-logo {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.sidebar-logo .logo-mark {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--accent); display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: #07090e;
+}
+.sidebar-logo .logo-text {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 16px; font-weight: 700; color: var(--text);
+}
+.sidebar-biz {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.biz-avatar {
+  width: 30px; height: 30px; border-radius: 6px;
+  background: linear-gradient(135deg, var(--purple), #4ecca3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: white; flex-shrink: 0;
+}
+.biz-name { font-size: 12px; font-weight: 600; line-height: 1.3; }
+.biz-plan { font-size: 10px; color: var(--accent); font-weight: 500; }
+.sidebar-nav { flex: 1; padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+.nav-section-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text2); padding: 10px 10px 6px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 8px;
+  cursor: pointer; transition: all .15s;
+  font-size: 13px; font-weight: 500; color: var(--text3);
+  text-decoration: none;
+  position: relative;
+}
+.nav-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
+.nav-item.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid rgba(78,204,163,.12);
+}
+.nav-icon { width: 18px; text-align: center; font-size: 15px; flex-shrink: 0; }
+.nav-badge {
+  margin-left: auto; background: var(--accent); color: #07090e;
+  font-size: 10px; font-weight: 700; border-radius: 10px;
+  padding: 1px 6px; min-width: 18px; text-align: center;
+}
+.nav-badge.red { background: var(--red); color: white; }
+.sidebar-bottom {
+  padding: 12px 10px;
+  border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.whatsapp-status {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border-radius: 8px;
+  background: rgba(37,211,102,.06); border: 1px solid rgba(37,211,102,.15);
+  cursor: pointer;
+}
+.ws-dot { width: 8px; height: 8px; border-radius: 50%; background: #25d366; flex-shrink: 0; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.ws-text { font-size: 11px; color: #25d366; font-weight: 500; }
+.ws-num { font-size: 10px; color: var(--text2); }
+
+/* ─── MAIN CONTENT ─── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.topbar {
+  height: 56px; display: flex; align-items: center;
+  padding: 0 24px; gap: 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  flex-shrink: 0;
+}
+.topbar-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 16px; font-weight: 700;
+}
+.topbar-sep { width: 1px; height: 20px; background: var(--border2); }
+.topbar-date { font-size: 12px; color: var(--text3); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.icon-btn {
+  width: 34px; height: 34px; border-radius: 8px;
+  background: transparent; border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 15px; transition: all .15s; color: var(--text3);
+}
+.icon-btn:hover { background: var(--card); border-color: var(--border2); }
+.user-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 12px 4px 4px; border-radius: 100px;
+  border: 1px solid var(--border); cursor: pointer;
+  transition: all .15s;
+}
+.user-chip:hover { border-color: var(--border2); background: var(--card); }
+.user-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #07090e;
+}
+.user-name { font-size: 12px; font-weight: 500; }
+
+/* ─── SCREEN TABS ─── */
+.screen-tabs {
+  display: flex; gap: 4px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+.screen-tab {
+  padding: 6px 16px; border-radius: 6px;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  transition: all .15s; color: var(--text3);
+  border: 1px solid transparent;
+}
+.screen-tab.active {
+  background: var(--accent-dim); color: var(--accent);
+  border-color: rgba(78,204,163,.15);
+}
+.screen-tab:hover:not(.active) { color: var(--text); background: var(--card); }
+
+/* ─── CONTENT AREA ─── */
+.content { flex: 1; overflow-y: auto; padding: 24px; }
+
+/* ─── DASHBOARD ─── */
+#screen-dashboard { display: flex; flex-direction: column; gap: 20px; }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.stat-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px;
+  position: relative; overflow: hidden;
+  transition: border-color .2s;
+}
+.stat-card:hover { border-color: var(--border2); }
+.stat-card::after {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--card-accent, var(--accent));
+}
+.stat-label { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+.stat-value {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 32px; font-weight: 800; line-height: 1;
+  margin-bottom: 6px;
+}
+.stat-delta { font-size: 11px; color: var(--text3); }
+.stat-delta .up { color: var(--accent); }
+.stat-delta .down { color: var(--red); }
+
+.dash-grid { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+.panel {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden;
+}
+.panel-header {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-title {
+  font-size: 13px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.panel-action {
+  font-size: 12px; color: var(--accent); cursor: pointer; font-weight: 500;
+  background: none; border: none; font-family: 'Poppins', sans-serif;
+}
+.panel-body { padding: 16px 20px; }
+
+/* agenda do dia */
+.day-slots { display: flex; flex-direction: column; gap: 8px; }
+.day-slot {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-radius: 10px;
+  background: var(--bg2); border: 1px solid var(--border);
+  transition: border-color .15s;
+}
+.day-slot:hover { border-color: var(--border2); }
+.slot-time-block { text-align: right; flex-shrink: 0; width: 40px; }
+.slot-time-val { font-size: 13px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; }
+.slot-time-dur { font-size: 10px; color: var(--text2); }
+.slot-bar { width: 3px; border-radius: 4px; height: 36px; flex-shrink: 0; }
+.slot-info { flex: 1; min-width: 0; }
+.slot-client { font-size: 13px; font-weight: 600; }
+.slot-service { font-size: 11px; color: var(--text3); }
+.slot-professional { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.slot-avatar { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+.slot-status-badge {
+  padding: 3px 10px; border-radius: 100px;
+  font-size: 10px; font-weight: 600; flex-shrink: 0;
+}
+.badge-green { background: rgba(78,204,163,.12); color: var(--accent); border: 1px solid rgba(78,204,163,.2); }
+.badge-yellow { background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(251,191,36,.2); }
+.badge-red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,113,113,.2); }
+.badge-purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(123,110,246,.2); }
+.badge-gray { background: rgba(255,255,255,.06); color: var(--text3); border: 1px solid var(--border); }
+
+/* mini chart */
+.mini-chart { display: flex; align-items: flex-end; gap: 4px; height: 60px; padding: 8px 0 0; }
+.bar { flex: 1; border-radius: 4px 4px 0 0; background: var(--accent); opacity: .25; transition: opacity .2s; }
+.bar:hover { opacity: .7; }
+.bar.today { opacity: .8; }
+
+/* fila sidebar */
+.queue-list { display: flex; flex-direction: column; gap: 8px; }
+.queue-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 8px;
+  background: var(--bg2); border: 1px solid var(--border);
+}
+.queue-pos {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--purple-dim); border: 1px solid rgba(123,110,246,.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: var(--purple); flex-shrink: 0;
+}
+.queue-name { font-size: 12px; font-weight: 600; }
+.queue-svc { font-size: 11px; color: var(--text3); }
+.queue-action {
+  margin-left: auto; padding: 4px 10px; border-radius: 6px;
+  background: var(--accent-dim); border: 1px solid rgba(78,204,163,.2);
+  color: var(--accent); font-size: 11px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* ─── AGENDA SCREEN ─── */
+#screen-agenda { display: none; flex-direction: column; gap: 16px; }
+.agenda-toolbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.week-nav { display: flex; align-items: center; gap: 4px; }
+.week-btn {
+  width: 32px; height: 32px; border-radius: 7px;
+  background: var(--card); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 14px; transition: all .15s; color: var(--text);
+}
+.week-btn:hover { border-color: var(--border2); }
+.week-label {
+  padding: 6px 16px; border-radius: 7px;
+  background: var(--card); border: 1px solid var(--border);
+  font-size: 12px; font-weight: 600; min-width: 140px; text-align: center;
+}
+.view-toggle {
+  display: flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden;
+}
+.view-btn {
+  padding: 6px 12px; font-size: 11px; font-weight: 500; cursor: pointer;
+  transition: all .15s; color: var(--text3); background: var(--card);
+  border: none; font-family: 'Poppins', sans-serif;
+}
+.view-btn.active { background: var(--accent-dim); color: var(--accent); }
+.filter-select {
+  padding: 6px 12px; border-radius: 7px;
+  background: var(--card); border: 1px solid var(--border);
+  color: var(--text); font-family: 'Poppins', sans-serif; font-size: 12px;
+  cursor: pointer;
+}
+.btn-add {
+  margin-left: auto; padding: 7px 16px; border-radius: 8px;
+  background: var(--accent); color: #07090e;
+  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700;
+  border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  transition: all .2s;
+}
+.btn-add:hover { background: #5ed9b0; transform: translateY(-1px); }
+
+/* calendar grid */
+.cal-grid {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden;
+}
+.cal-header {
+  display: grid; grid-template-columns: 56px repeat(7, 1fr);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+.cal-header-cell {
+  padding: 12px 10px; text-align: center; font-size: 11px; font-weight: 600;
+  color: var(--text3); border-right: 1px solid var(--border);
+}
+.cal-header-cell:last-child { border-right: none; }
+.cal-header-cell .day-num {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 18px; font-weight: 700; display: block; line-height: 1.1; color: var(--text);
+}
+.cal-header-cell.today .day-num {
+  background: var(--accent); color: #07090e;
+  border-radius: 50%; width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center; margin: 0 auto;
+}
+.cal-body { display: flex; overflow-y: auto; max-height: calc(100vh - 320px); }
+.time-col {
+  width: 56px; flex-shrink: 0; border-right: 1px solid var(--border);
+}
+.time-cell {
+  height: 60px; display: flex; align-items: flex-start; justify-content: flex-end;
+  padding: 4px 8px 0 0; font-size: 10px; color: var(--text2); font-weight: 500;
+  border-bottom: 1px solid var(--border);
+}
+.days-grid {
+  flex: 1; display: grid; grid-template-columns: repeat(7, 1fr);
+}
+.day-col { border-right: 1px solid var(--border); position: relative; }
+.day-col:last-child { border-right: none; }
+.hour-row {
+  height: 60px; border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.hour-row:hover { background: rgba(255,255,255,.01); }
+.cal-event {
+  position: absolute; left: 4px; right: 4px;
+  border-radius: 6px; padding: 4px 8px;
+  font-size: 11px; font-weight: 600; overflow: hidden;
+  cursor: pointer; transition: opacity .15s;
+  z-index: 2;
+}
+.cal-event:hover { opacity: .85; }
+.cal-event.green { background: rgba(78,204,163,.2); color: var(--accent); border-left: 3px solid var(--accent); }
+.cal-event.purple { background: rgba(123,110,246,.2); color: var(--purple); border-left: 3px solid var(--purple); }
+.cal-event.red { background: rgba(248,113,113,.15); color: var(--red); border-left: 3px solid var(--red); }
+.cal-event.yellow { background: rgba(251,191,36,.15); color: var(--yellow); border-left: 3px solid var(--yellow); }
+.event-client { font-size: 10px; opacity: .8; font-weight: 400; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.now-line {
+  position: absolute; left: 0; right: 0; z-index: 3;
+  display: flex; align-items: center; pointer-events: none;
+}
+.now-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); flex-shrink: 0; margin-left: -5px; }
+.now-bar { flex: 1; height: 1.5px; background: var(--red); }
+
+/* ─── TWEAKS ─── */
+#tweaks-panel {
+  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+  background: var(--card2); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 20px; width: 220px;
+  display: none; flex-direction: column; gap: 14px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.5);
+  font-family: 'Poppins', sans-serif;
+}
+#tweaks-panel h3 { font-size: 12px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+.tweak-row { display: flex; flex-direction: column; gap: 5px; }
+.tweak-row label { font-size: 11px; color: var(--text3); }
+.tweak-colors { display: flex; gap: 8px; flex-wrap: wrap; }
+.tweak-swatch { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: border-color .2s; }
+.tweak-swatch.active { border-color: white; }
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: #131720; border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 16px; width: 480px; max-width: 95vw;
+  box-shadow: 0 32px 80px rgba(0,0,0,.6);
+  transform: translateY(16px) scale(.98); transition: transform .2s;
+  max-height: 90vh; overflow-y: auto;
+}
+.modal-overlay.open .modal { transform: none; }
+.modal-header {
+  padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 700; }
+.modal-close {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: rgba(255,255,255,.06); border: none; color: #94a3b8;
+  font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.modal-close:hover { background: rgba(255,255,255,.1); color: #e2e8f0; }
+.modal-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.modal-footer {
+  padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex; gap: 10px; justify-content: flex-end;
+}
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-label { font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; }
+.form-input, .form-select, .form-textarea {
+  padding: 10px 14px; border-radius: 8px;
+  background: #0d1018; border: 1px solid rgba(255,255,255,0.10);
+  color: #e2e8f0; font-family: 'Poppins', sans-serif; font-size: 13px;
+  transition: border-color .15s; width: 100%;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  outline: none; border-color: rgba(78,204,163,.4);
+}
+.form-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-hint { font-size: 11px; color: #64748b; }
+.checkbox-group { display: flex; flex-direction: column; gap: 8px; }
+.checkbox-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; border-radius: 8px;
+  background: #0d1018; border: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer; transition: border-color .15s;
+}
+.checkbox-item:hover { border-color: rgba(78,204,163,.2); }
+.checkbox-item input[type=checkbox] { accent-color: #4ecca3; width: 15px; height: 15px; cursor: pointer; }
+.checkbox-item label { font-size: 13px; cursor: pointer; flex: 1; }
+.btn-cancel {
+  padding: 9px 20px; border-radius: 8px;
+  background: transparent; border: 1px solid rgba(255,255,255,.1);
+  color: #94a3b8; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all .15s;
+}
+.btn-cancel:hover { border-color: rgba(255,255,255,.2); color: #e2e8f0; }
+.btn-save {
+  padding: 9px 24px; border-radius: 8px;
+  background: #4ecca3; color: #07090e;
+  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700;
+  border: none; cursor: pointer; transition: all .2s;
+}
+.btn-save:hover { background: #5ed9b0; }
+.btn-danger {
+  padding: 9px 20px; border-radius: 8px;
+  background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.2);
+  color: #f87171; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 500;
+  cursor: pointer; margin-right: auto; transition: all .15s;
+}
+.btn-danger:hover { background: rgba(248,113,113,.2); }
+
+/* ─── SERVICE CARDS ─── */
+.services-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+.service-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px;
+  transition: all .2s; cursor: pointer; position: relative;
+}
+.service-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.service-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--sc-color, var(--accent)); border-radius: 12px 12px 0 0;
+}
+.service-name { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+.service-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.service-tag { padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 600; }
+.service-actions { display: flex; gap: 8px; margin-top: auto; }
+.btn-sm {
+  padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  cursor: pointer; font-family: 'Poppins', sans-serif; transition: all .15s; border: 1px solid;
+}
+.btn-sm-edit { background: var(--accent-dim); color: var(--accent); border-color: rgba(78,204,163,.2); }
+.btn-sm-edit:hover { background: rgba(78,204,163,.2); }
+.btn-sm-del { background: var(--red-dim); color: var(--red); border-color: rgba(248,113,113,.2); }
+.btn-sm-del:hover { background: rgba(248,113,113,.2); }
+.add-card {
+  background: var(--card); border: 2px dashed var(--border2);
+  border-radius: 12px; padding: 20px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .2s; min-height: 130px;
+  flex-direction: column; gap: 8px; color: var(--text2);
+}
+.add-card:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+.add-card .plus { font-size: 28px; font-weight: 300; }
+.add-card span { font-size: 12px; font-weight: 600; }
+
+/* ─── PROFESSIONALS ─── */
+.prof-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; }
+.prof-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px; display: flex; gap: 14px;
+  transition: border-color .2s;
+}
+.prof-card:hover { border-color: var(--border2); }
+.prof-avatar {
+  width: 52px; height: 52px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 18px; font-weight: 800;
+  flex-shrink: 0;
+}
+.prof-info { flex: 1; min-width: 0; }
+.prof-name { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.prof-services { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+.prof-stats { display: flex; gap: 12px; }
+.prof-stat { font-size: 11px; color: var(--text3); }
+.prof-stat strong { color: var(--text); font-weight: 600; }
+.prof-actions { display: flex; gap: 6px; margin-top: 10px; }
+
+/* ─── CLIENTS ─── */
+.clients-table { width: 100%; border-collapse: collapse; }
+.clients-table th {
+  text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text2); padding: 10px 14px;
+  border-bottom: 1px solid var(--border); background: var(--bg2);
+}
+.clients-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+.clients-table tr:hover td { background: rgba(255,255,255,.02); cursor: pointer; }
+.client-cell { display: flex; align-items: center; gap: 10px; }
+.client-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+
+/* ─── REPORTS ─── */
+.reports-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.chart-panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.horiz-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.horiz-bar-label { font-size: 12px; color: var(--text3); width: 90px; flex-shrink: 0; }
+.horiz-bar-track { flex: 1; height: 8px; background: var(--bg2); border-radius: 4px; overflow: hidden; }
+.horiz-bar-fill { height: 100%; border-radius: 4px; }
+.horiz-bar-val { font-size: 11px; color: var(--text3); width: 32px; text-align: right; flex-shrink: 0; }
+
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">K</div>
+    <div class="logo-text">Kodigo</div>
+  </div>
+  <div class="sidebar-biz">
+    <div class="biz-avatar">BB</div>
+    <div>
+      <div class="biz-name">Barbearia Barros</div>
+      <div class="biz-plan">Plano Profissional</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Geral</div>
+    <a class="nav-item active" onclick="setScreen('dashboard')">
+      <span class="nav-icon">◈</span> Dashboard
+    </a>
+    <a class="nav-item" onclick="setScreen('agenda')">
+      <span class="nav-icon">◷</span> Agenda
+    </a>
+    <a class="nav-item">
+      <span class="nav-icon">≡</span> Agendamentos
+      <span class="nav-badge">3</span>
+    </a>
+    <a class="nav-item">
+      <span class="nav-icon">⌚</span> Fila de Espera
+      <span class="nav-badge red">2</span>
+    </a>
+    <div class="nav-section-label">Cadastros</div>
+    <a class="nav-item" onclick="setScreen('servicos')">
+      <span class="nav-icon">✂</span> Serviços
+    </a>
+    <a class="nav-item" onclick="setScreen('profissionais')">
+      <span class="nav-icon">◉</span> Profissionais
+    </a>
+    <a class="nav-item" onclick="setScreen('clientes')">
+      <span class="nav-icon">◌</span> Clientes
+    </a>
+    <div class="nav-section-label">Análises</div>
+    <a class="nav-item" onclick="setScreen('relatorios')">
+      <span class="nav-icon">↗</span> Relatórios
+    </a>
+  </nav>
+  <div class="sidebar-bottom">
+    <a class="nav-item">
+      <span class="nav-icon">⚙</span> Configurações
+    </a>
+    <div class="whatsapp-status">
+      <div class="ws-dot"></div>
+      <div>
+        <div class="ws-text">WhatsApp conectado</div>
+        <div class="ws-num">+55 11 9•••• ••••</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Dashboard</div>
+    <div class="topbar-sep"></div>
+    <div class="topbar-date">Quarta, 23 de abril de 2026</div>
+    <div class="topbar-right">
+      <div class="icon-btn" title="Notificações">🔔</div>
+      <div class="user-chip">
+        <div class="user-avatar">JB</div>
+        <div class="user-name">João Barros</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN TABS -->
+  <div class="screen-tabs">
+    <div class="screen-tab active" onclick="setScreen('dashboard')">Dashboard</div>
+    <div class="screen-tab" onclick="setScreen('agenda')">Agenda semanal</div>
+    <div class="screen-tab" onclick="setScreen('servicos')">Serviços</div>
+    <div class="screen-tab" onclick="setScreen('profissionais')">Profissionais</div>
+    <div class="screen-tab" onclick="setScreen('clientes')">Clientes</div>
+    <div class="screen-tab" onclick="setScreen('relatorios')">Relatórios</div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══ DASHBOARD ══ -->
+    <div id="screen-dashboard">
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card" style="--card-accent: var(--accent)">
+          <div class="stat-label">Hoje</div>
+          <div class="stat-value" style="color:var(--accent)">12</div>
+          <div class="stat-delta">Agendamentos <span class="up">↑ +3 vs ontem</span></div>
+        </div>
+        <div class="stat-card" style="--card-accent: var(--purple)">
+          <div class="stat-label">Ocupação</div>
+          <div class="stat-value" style="color:var(--purple)">87%</div>
+          <div class="stat-delta">7/8 profissionais ocupados</div>
+        </div>
+        <div class="stat-card" style="--card-accent: var(--yellow)">
+          <div class="stat-label">Fila de espera</div>
+          <div class="stat-value" style="color:var(--yellow)">2</div>
+          <div class="stat-delta"><span class="up">1 vaga disponível</span> às 16h</div>
+        </div>
+        <div class="stat-card" style="--card-accent: var(--red)">
+          <div class="stat-label">Cancelamentos</div>
+          <div class="stat-value" style="color:var(--red)">1</div>
+          <div class="stat-delta"><span class="down">↓ vs média de 0.4</span></div>
+        </div>
+      </div>
+
+      <!-- Main grid -->
+      <div class="dash-grid">
+        <!-- Agenda do dia -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Agenda de hoje</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="font-size:11px;color:var(--text3)">João Silva</span>
+              <select class="filter-select" style="padding:4px 10px;font-size:11px">
+                <option>Todos profissionais</option>
+                <option>João Silva</option>
+                <option>Carlos Mendes</option>
+              </select>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="day-slots">
+
+              <div class="day-slot">
+                <div class="slot-time-block">
+                  <div class="slot-time-val">09:00</div>
+                  <div class="slot-time-dur">30min</div>
+                </div>
+                <div class="slot-bar" style="background:var(--accent)"></div>
+                <div class="slot-info">
+                  <div class="slot-client">Ricardo Oliveira</div>
+                  <div class="slot-service">Corte + Barba</div>
+                  <div class="slot-professional">João Silva</div>
+                </div>
+                <div class="slot-avatar" style="background:rgba(78,204,163,.15);color:var(--accent)">RO</div>
+                <div class="slot-status-badge badge-green">Confirmado</div>
+              </div>
+
+              <div class="day-slot">
+                <div class="slot-time-block">
+                  <div class="slot-time-val">10:00</div>
+                  <div class="slot-time-dur">45min</div>
+                </div>
+                <div class="slot-bar" style="background:var(--purple)"></div>
+                <div class="slot-info">
+                  <div class="slot-client">Felipe Martins</div>
+                  <div class="slot-service">Corte + Coloração</div>
+                  <div class="slot-professional">Carlos Mendes</div>
+                </div>
+                <div class="slot-avatar" style="background:var(--purple-dim);color:var(--purple)">FM</div>
+                <div class="slot-status-badge badge-purple">Em andamento</div>
+              </div>
+
+              <div class="day-slot" style="opacity:.6">
+                <div class="slot-time-block">
+                  <div class="slot-time-val">11:00</div>
+                  <div class="slot-time-dur">—</div>
+                </div>
+                <div class="slot-bar" style="background:var(--border2)"></div>
+                <div class="slot-info">
+                  <div class="slot-service" style="color:var(--text2)">Horário livre</div>
+                </div>
+                <div class="slot-status-badge badge-gray">Disponível</div>
+              </div>
+
+              <div class="day-slot">
+                <div class="slot-time-block">
+                  <div class="slot-time-val">14:00</div>
+                  <div class="slot-time-dur">30min</div>
+                </div>
+                <div class="slot-bar" style="background:var(--accent)"></div>
+                <div class="slot-info">
+                  <div class="slot-client">Lucas Teixeira</div>
+                  <div class="slot-service">Corte</div>
+                  <div class="slot-professional">João Silva</div>
+                </div>
+                <div class="slot-avatar" style="background:rgba(78,204,163,.15);color:var(--accent)">LT</div>
+                <div class="slot-status-badge badge-green">Confirmado</div>
+              </div>
+
+              <div class="day-slot">
+                <div class="slot-time-block">
+                  <div class="slot-time-val">15:30</div>
+                  <div class="slot-time-dur">30min</div>
+                </div>
+                <div class="slot-bar" style="background:var(--yellow)"></div>
+                <div class="slot-info">
+                  <div class="slot-client">Gustavo Neves</div>
+                  <div class="slot-service">Barba</div>
+                  <div class="slot-professional">Carlos Mendes</div>
+                </div>
+                <div class="slot-avatar" style="background:var(--yellow-dim);color:var(--yellow)">GN</div>
+                <div class="slot-status-badge badge-yellow">Aguardando</div>
+              </div>
+
+              <div class="day-slot">
+                <div class="slot-time-block">
+                  <div class="slot-time-val">16:00</div>
+                  <div class="slot-time-dur">30min</div>
+                </div>
+                <div class="slot-bar" style="background:var(--red)"></div>
+                <div class="slot-info">
+                  <div class="slot-client">André Souza</div>
+                  <div class="slot-service">Corte</div>
+                  <div class="slot-professional">João Silva</div>
+                </div>
+                <div class="slot-avatar" style="background:var(--red-dim);color:var(--red)">AS</div>
+                <div class="slot-status-badge badge-red">Cancelado</div>
+              </div>
+
+            </div>
+
+            <!-- Mini bar chart -->
+            <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
+              <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.8px">Semana atual</div>
+              <div style="display:flex;gap:12px;align-items:flex-end;height:52px">
+                <div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:4px">
+                  <div class="bar" style="height:40%;width:100%"></div>
+                  <div style="font-size:9px;color:var(--text2)">Seg</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:4px">
+                  <div class="bar" style="height:75%;width:100%"></div>
+                  <div style="font-size:9px;color:var(--text2)">Ter</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:4px">
+                  <div class="bar today" style="height:87%;width:100%"></div>
+                  <div style="font-size:9px;color:var(--accent)">Hj</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:4px">
+                  <div class="bar" style="height:60%;width:100%;opacity:.15"></div>
+                  <div style="font-size:9px;color:var(--text2)">Qui</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:4px">
+                  <div class="bar" style="height:90%;width:100%;opacity:.15"></div>
+                  <div style="font-size:9px;color:var(--text2)">Sex</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:4px">
+                  <div class="bar" style="height:50%;width:100%;opacity:.15"></div>
+                  <div style="font-size:9px;color:var(--text2)">Sáb</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar: fila + profissionais -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Fila de espera</div>
+              <span class="slot-status-badge badge-yellow" style="font-size:10px">2 aguardando</span>
+            </div>
+            <div class="panel-body">
+              <div class="queue-list">
+                <div class="queue-item">
+                  <div class="queue-pos">#1</div>
+                  <div class="slot-avatar" style="background:var(--purple-dim);color:var(--purple);width:28px;height:28px;font-size:10px">MA</div>
+                  <div>
+                    <div class="queue-name">Mateus Alves</div>
+                    <div class="queue-svc">Corte + Barba · qualquer prof.</div>
+                  </div>
+                  <div class="queue-action">Agendar</div>
+                </div>
+                <div class="queue-item" style="opacity:.7">
+                  <div class="queue-pos">#2</div>
+                  <div class="slot-avatar" style="background:rgba(78,204,163,.15);color:var(--accent);width:28px;height:28px;font-size:10px">RP</div>
+                  <div>
+                    <div class="queue-name">Rafael Pires</div>
+                    <div class="queue-svc">Corte · João Silva</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Profissionais hoje</div>
+            </div>
+            <div class="panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="slot-avatar" style="background:rgba(78,204,163,.15);color:var(--accent);width:32px;height:32px">JS</div>
+                <div style="flex:1">
+                  <div style="font-size:12px;font-weight:600">João Silva</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                    <div style="flex:1;height:4px;border-radius:4px;background:var(--bg2);overflow:hidden">
+                      <div style="width:75%;height:100%;background:var(--accent);border-radius:4px"></div>
+                    </div>
+                    <div style="font-size:10px;color:var(--text3)">75%</div>
+                  </div>
+                </div>
+                <div class="slot-status-badge badge-green" style="font-size:10px">6 hoje</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="slot-avatar" style="background:var(--purple-dim);color:var(--purple);width:32px;height:32px">CM</div>
+                <div style="flex:1">
+                  <div style="font-size:12px;font-weight:600">Carlos Mendes</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                    <div style="flex:1;height:4px;border-radius:4px;background:var(--bg2);overflow:hidden">
+                      <div style="width:58%;height:100%;background:var(--purple);border-radius:4px"></div>
+                    </div>
+                    <div style="font-size:10px;color:var(--text3)">58%</div>
+                  </div>
+                </div>
+                <div class="slot-status-badge badge-purple" style="font-size:10px">4 hoje</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ AGENDA SEMANAL ══ -->
+    <div id="screen-agenda">
+      <div class="agenda-toolbar">
+        <div class="week-nav">
+          <button class="week-btn">‹</button>
+          <div class="week-label">21 – 27 abr, 2026</div>
+          <button class="week-btn">›</button>
+        </div>
+        <div class="view-toggle">
+          <button class="view-btn active">Semana</button>
+          <button class="view-btn">Dia</button>
+        </div>
+        <select class="filter-select">
+          <option>Todos profissionais</option>
+          <option>João Silva</option>
+          <option>Carlos Mendes</option>
+        </select>
+        <button class="btn-add">+ Agendamento</button>
+      </div>
+
+      <div class="cal-grid">
+        <!-- Header -->
+        <div class="cal-header">
+          <div class="cal-header-cell"></div>
+          <div class="cal-header-cell">Seg<span class="day-num">21</span></div>
+          <div class="cal-header-cell">Ter<span class="day-num">22</span></div>
+          <div class="cal-header-cell today">Qua<span class="day-num">23</span></div>
+          <div class="cal-header-cell">Qui<span class="day-num">24</span></div>
+          <div class="cal-header-cell">Sex<span class="day-num">25</span></div>
+          <div class="cal-header-cell">Sáb<span class="day-num">26</span></div>
+          <div class="cal-header-cell">Dom<span class="day-num">27</span></div>
+        </div>
+        <!-- Body -->
+        <div class="cal-body">
+          <div class="time-col">
+            <div class="time-cell">09:00</div>
+            <div class="time-cell">10:00</div>
+            <div class="time-cell">11:00</div>
+            <div class="time-cell">12:00</div>
+            <div class="time-cell">13:00</div>
+            <div class="time-cell">14:00</div>
+            <div class="time-cell">15:00</div>
+            <div class="time-cell">16:00</div>
+            <div class="time-cell">17:00</div>
+          </div>
+          <div class="days-grid">
+            <!-- Seg -->
+            <div class="day-col">
+              <div class="hour-row"><div class="cal-event green" style="top:6px;height:46px">Corte<div class="event-client">Ricardo O.</div></div></div>
+              <div class="hour-row"><div class="cal-event purple" style="top:6px;height:70px">Corte+Barba<div class="event-client">Felipe M.</div></div></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"><div class="cal-event green" style="top:6px;height:46px">Corte<div class="event-client">Lucas T.</div></div></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"></div>
+            </div>
+            <!-- Ter -->
+            <div class="day-col">
+              <div class="hour-row"></div>
+              <div class="hour-row"><div class="cal-event purple" style="top:6px;height:46px">Barba<div class="event-client">André S.</div></div></div>
+              <div class="hour-row"><div class="cal-event green" style="top:6px;height:46px">Corte<div class="event-client">Marcos P.</div></div></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"><div class="cal-event yellow" style="top:6px;height:46px">Barba<div class="event-client">Thiago L.</div></div></div>
+              <div class="hour-row"><div class="cal-event green" style="top:6px;height:46px">Corte<div class="event-client">Bruno K.</div></div></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"></div>
+            </div>
+            <!-- Qua (hoje) -->
+            <div class="day-col" style="background:rgba(78,204,163,.02)">
+              <div class="hour-row"><div class="cal-event green" style="top:6px;height:46px">Corte+Barba<div class="event-client">Ricardo O.</div></div></div>
+              <div class="hour-row"><div class="cal-event purple" style="top:6px;height:70px">Coloração<div class="event-client">Felipe M.</div></div></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"></div>
+              <div class="hour-row">
+                <div class="now-line" style="top:0"><div class="now-dot"></div><div class="now-bar"></div></div>
+                <div class="cal-event green" style="top:6px;height:46px">Corte<div class="event-client">Lucas T.</div></div>
+              </div>
+              <div class="hour-row"><div class="cal-event yellow" style="top:30px;height:46px">Barba<div class="event-client">Gustavo N.</div></div></div>
+              <div class="hour-row"><div class="cal-event red" style="top:6px;height:46px;text-decoration:line-through;opacity:.5">Corte<div class="event-client">André S.</div></div></div>
+              <div class="hour-row"></div>
+            </div>
+            <!-- Qui -->
+            <div class="day-col">
+              <div class="hour-row"></div>
+              <div class="hour-row"><div class="cal-event green" style="top:6px;height:46px">Corte<div class="event-client">Paulo R.</div></div></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"><div class="cal-event purple" style="top:6px;height:46px">Barba<div class="event-client">Diego F.</div></div></div>
+              <div class="hour-row"><div class="cal-event green" style="top:6px;height:46px">Corte<div class="event-client">Henrique V.</div></div></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"></div>
+            </div>
+            <!-- Sex -->
+            <div class="day-col">
+              <div class="hour-row"><div class="cal-event purple" style="top:6px;height:46px">Corte+Barba<div class="event-client">Sérgio M.</div></div></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"><div class="cal-event green" style="top:6px;height:70px">Coloração<div class="event-client">Rafael P.</div></div></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"><div class="cal-event green" style="top:6px;height:46px">Corte<div class="event-client">Carlos A.</div></div></div>
+              <div class="hour-row"><div class="cal-event yellow" style="top:6px;height:46px">Barba<div class="event-client">Fábio N.</div></div></div>
+              <div class="hour-row"><div class="cal-event green" style="top:6px;height:46px">Corte<div class="event-client">Igor S.</div></div></div>
+              <div class="hour-row"></div>
+            </div>
+            <!-- Sáb -->
+            <div class="day-col">
+              <div class="hour-row"><div class="cal-event green" style="top:6px;height:46px">Corte<div class="event-client">Rodrigo C.</div></div></div>
+              <div class="hour-row"><div class="cal-event green" style="top:6px;height:46px">Corte<div class="event-client">Alexandre B.</div></div></div>
+              <div class="hour-row"><div class="cal-event purple" style="top:6px;height:46px">Barba<div class="event-client">Leandro P.</div></div></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"><div class="cal-event yellow" style="top:6px;height:46px">Corte+Barba<div class="event-client">Vitor M.</div></div></div>
+              <div class="hour-row"><div class="cal-event green" style="top:6px;height:46px">Corte<div class="event-client">Eduardo L.</div></div></div>
+              <div class="hour-row"></div>
+              <div class="hour-row"></div>
+            </div>
+            <!-- Dom -->
+            <div class="day-col" style="opacity:.4">
+              <div class="hour-row"></div><div class="hour-row"></div><div class="hour-row"></div>
+              <div class="hour-row"></div><div class="hour-row"></div><div class="hour-row"></div>
+              <div class="hour-row"></div><div class="hour-row"></div><div class="hour-row"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ══ SERVIÇOS ══ -->
+    <div id="screen-servicos" style="display:none;flex-direction:column;gap:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:800;margin-bottom:4px">Serviços</div>
+          <div style="font-size:12px;color:var(--text3)">3 serviços cadastrados</div>
+        </div>
+        <button class="btn-add" onclick="openModal('modal-servico')">+ Novo serviço</button>
+      </div>
+      <div class="services-grid">
+        <div class="service-card" style="--sc-color:var(--accent)">
+          <div class="service-name">Corte de Cabelo</div>
+          <div class="service-tags">
+            <span class="service-tag" style="background:var(--accent-dim);color:var(--accent)">30 min</span>
+            <span class="service-tag" style="background:var(--purple-dim);color:var(--purple)">R$ 35,00</span>
+          </div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Corte masculino com acabamento e lavagem.</div>
+          <div class="service-actions">
+            <button class="btn-sm btn-sm-edit" onclick="openModal('modal-servico','Corte de Cabelo')">Editar</button>
+            <button class="btn-sm btn-sm-del" onclick="openModal('modal-confirma-del','Corte de Cabelo')">Remover</button>
+          </div>
+        </div>
+        <div class="service-card" style="--sc-color:var(--purple)">
+          <div class="service-name">Barba</div>
+          <div class="service-tags">
+            <span class="service-tag" style="background:var(--yellow-dim);color:var(--yellow)">20 min</span>
+            <span class="service-tag" style="background:var(--purple-dim);color:var(--purple)">R$ 25,00</span>
+          </div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Barba completa com toalha quente e navalha.</div>
+          <div class="service-actions">
+            <button class="btn-sm btn-sm-edit" onclick="openModal('modal-servico','Barba')">Editar</button>
+            <button class="btn-sm btn-sm-del" onclick="openModal('modal-confirma-del','Barba')">Remover</button>
+          </div>
+        </div>
+        <div class="service-card" style="--sc-color:var(--yellow)">
+          <div class="service-name">Corte + Barba</div>
+          <div class="service-tags">
+            <span class="service-tag" style="background:var(--red-dim);color:var(--red)">45 min</span>
+            <span class="service-tag" style="background:var(--purple-dim);color:var(--purple)">R$ 55,00</span>
+          </div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Combo completo: corte e barba com acabamento.</div>
+          <div class="service-actions">
+            <button class="btn-sm btn-sm-edit" onclick="openModal('modal-servico','Corte + Barba')">Editar</button>
+            <button class="btn-sm btn-sm-del" onclick="openModal('modal-confirma-del','Corte + Barba')">Remover</button>
+          </div>
+        </div>
+        <div class="add-card" onclick="openModal('modal-servico')">
+          <div class="plus">+</div>
+          <span>Novo serviço</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PROFISSIONAIS ══ -->
+    <div id="screen-profissionais" style="display:none;flex-direction:column;gap:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:800;margin-bottom:4px">Profissionais</div>
+          <div style="font-size:12px;color:var(--text3)">2 profissionais cadastrados</div>
+        </div>
+        <button class="btn-add" onclick="openModal('modal-profissional')">+ Novo profissional</button>
+      </div>
+      <div class="prof-grid">
+        <div class="prof-card">
+          <div class="prof-avatar" style="background:rgba(78,204,163,.15);color:var(--accent)">JS</div>
+          <div class="prof-info">
+            <div class="prof-name">João Silva</div>
+            <div class="prof-services">
+              <span class="service-tag" style="background:var(--accent-dim);color:var(--accent)">Corte</span>
+              <span class="service-tag" style="background:var(--accent-dim);color:var(--accent)">Barba</span>
+              <span class="service-tag" style="background:var(--accent-dim);color:var(--accent)">Corte+Barba</span>
+            </div>
+            <div class="prof-stats">
+              <div class="prof-stat"><strong>187</strong> agend./mês</div>
+              <div class="prof-stat"><strong>4.9★</strong> avaliação</div>
+            </div>
+            <div class="prof-actions">
+              <button class="btn-sm btn-sm-edit" onclick="openModal('modal-profissional','João Silva')">Editar</button>
+              <button class="btn-sm btn-sm-del" onclick="openModal('modal-confirma-del','João Silva')">Remover</button>
+            </div>
+          </div>
+        </div>
+        <div class="prof-card">
+          <div class="prof-avatar" style="background:var(--purple-dim);color:var(--purple)">CM</div>
+          <div class="prof-info">
+            <div class="prof-name">Carlos Mendes</div>
+            <div class="prof-services">
+              <span class="service-tag" style="background:var(--purple-dim);color:var(--purple)">Corte</span>
+              <span class="service-tag" style="background:var(--purple-dim);color:var(--purple)">Coloração</span>
+            </div>
+            <div class="prof-stats">
+              <div class="prof-stat"><strong>124</strong> agend./mês</div>
+              <div class="prof-stat"><strong>4.7★</strong> avaliação</div>
+            </div>
+            <div class="prof-actions">
+              <button class="btn-sm btn-sm-edit" onclick="openModal('modal-profissional','Carlos Mendes')">Editar</button>
+              <button class="btn-sm btn-sm-del" onclick="openModal('modal-confirma-del','Carlos Mendes')">Remover</button>
+            </div>
+          </div>
+        </div>
+        <div class="add-card" onclick="openModal('modal-profissional')" style="min-height:100px">
+          <div class="plus">+</div>
+          <span>Novo profissional</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CLIENTES ══ -->
+    <div id="screen-clientes" style="display:none;flex-direction:column;gap:16px">
+      <div style="display:flex;gap:10px;align-items:center">
+        <input type="text" placeholder="🔍  Buscar por nome ou telefone..." style="flex:1;padding:8px 14px;border-radius:8px;background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-family:'Poppins',sans-serif;font-size:13px;">
+        <select style="padding:8px 12px;border-radius:8px;background:var(--bg2);border:1px solid var(--border2);color:var(--text3);font-family:'Poppins',sans-serif;font-size:12px"><option>Todos</option><option>Frequentes (+5x)</option><option>Novos</option></select>
+      </div>
+      <div class="panel">
+        <table class="clients-table">
+          <thead><tr><th>Cliente</th><th>Telefone</th><th>Última visita</th><th>Total visitas</th><th>Ticket médio</th><th>Ações</th></tr></thead>
+          <tbody>
+            <tr onclick="openModal('modal-cliente','Ricardo Oliveira')">
+              <td><div class="client-cell"><div class="client-avatar" style="background:var(--accent-dim);color:var(--accent)">RO</div><div><div style="font-weight:600">Ricardo Oliveira</div><div style="font-size:11px;color:var(--text3)">Desde jan/2025</div></div></div></td>
+              <td style="color:var(--text3);font-size:12px">+55 11 99123-4567</td>
+              <td style="font-size:12px">23/04/2026</td>
+              <td><span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;color:var(--accent)">24</span></td>
+              <td style="font-size:12px;color:var(--text3)">R$ 45,00</td>
+              <td><button class="btn-sm btn-sm-edit" onclick="event.stopPropagation();openModal('modal-cliente','Ricardo Oliveira')">Ver histórico</button></td>
+            </tr>
+            <tr onclick="openModal('modal-cliente','Felipe Martins')">
+              <td><div class="client-cell"><div class="client-avatar" style="background:var(--purple-dim);color:var(--purple)">FM</div><div><div style="font-weight:600">Felipe Martins</div><div style="font-size:11px;color:var(--text3)">Desde mar/2025</div></div></div></td>
+              <td style="color:var(--text3);font-size:12px">+55 11 98765-4321</td>
+              <td style="font-size:12px">22/04/2026</td>
+              <td><span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;color:var(--purple)">12</span></td>
+              <td style="font-size:12px;color:var(--text3)">R$ 55,00</td>
+              <td><button class="btn-sm btn-sm-edit" onclick="event.stopPropagation();openModal('modal-cliente','Felipe Martins')">Ver histórico</button></td>
+            </tr>
+            <tr onclick="openModal('modal-cliente','Lucas Teixeira')">
+              <td><div class="client-cell"><div class="client-avatar" style="background:var(--yellow-dim);color:var(--yellow)">LT</div><div><div style="font-weight:600">Lucas Teixeira</div><div style="font-size:11px;color:var(--text3)">Desde fev/2026</div></div></div></td>
+              <td style="color:var(--text3);font-size:12px">+55 11 97654-3210</td>
+              <td style="font-size:12px">21/04/2026</td>
+              <td><span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;color:var(--yellow)">5</span></td>
+              <td style="font-size:12px;color:var(--text3)">R$ 35,00</td>
+              <td><button class="btn-sm btn-sm-edit" onclick="event.stopPropagation();openModal('modal-cliente','Lucas Teixeira')">Ver histórico</button></td>
+            </tr>
+            <tr onclick="openModal('modal-cliente','Gustavo Neves')">
+              <td><div class="client-cell"><div class="client-avatar" style="background:var(--red-dim);color:var(--red)">GN</div><div><div style="font-weight:600">Gustavo Neves</div><div style="font-size:11px;color:var(--text3)">Desde abr/2026</div></div></div></td>
+              <td style="color:var(--text3);font-size:12px">+55 11 96543-2109</td>
+              <td style="font-size:12px">18/04/2026</td>
+              <td><span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;color:var(--text3)">2</span></td>
+              <td style="font-size:12px;color:var(--text3)">R$ 25,00</td>
+              <td><button class="btn-sm btn-sm-edit" onclick="event.stopPropagation();openModal('modal-cliente','Gustavo Neves')">Ver histórico</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ RELATÓRIOS ══ -->
+    <div id="screen-relatorios" style="display:none;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:800">Relatórios</div>
+        <div style="display:flex;gap:8px">
+          <select class="filter-select" style="font-size:12px"><option>Este mês</option><option>Mês passado</option><option>Últimos 3 meses</option></select>
+          <button class="btn-add" style="background:var(--card);color:var(--accent);border:1px solid rgba(78,204,163,.2)">↓ Exportar CSV</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+        <div class="stat-card" style="--card-accent:var(--accent)">
+          <div class="stat-label">Receita do mês</div>
+          <div class="stat-value" style="color:var(--accent)">R$4.280</div>
+          <div class="stat-delta"><span class="up">↑ +18% vs mês passado</span></div>
+        </div>
+        <div class="stat-card" style="--card-accent:var(--purple)">
+          <div class="stat-label">Taxa de ocupação</div>
+          <div class="stat-value" style="color:var(--purple)">82%</div>
+          <div class="stat-delta">Média mensal</div>
+        </div>
+        <div class="stat-card" style="--card-accent:var(--red)">
+          <div class="stat-label">Cancelamentos</div>
+          <div class="stat-value" style="color:var(--red)">14</div>
+          <div class="stat-delta"><span class="down">↑ +2 vs mês passado</span></div>
+        </div>
+      </div>
+      <div class="reports-grid">
+        <div class="chart-panel">
+          <div class="panel-header"><div class="panel-title">Agendamentos por semana</div></div>
+          <div class="panel-body">
+            <div style="display:flex;align-items:flex-end;gap:8px;height:100px">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;border-radius:4px 4px 0 0;background:var(--accent);opacity:.3;height:52%"></div><div style="font-size:9px;color:var(--text2)">Sem 1</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;border-radius:4px 4px 0 0;background:var(--accent);opacity:.3;height:68%"></div><div style="font-size:9px;color:var(--text2)">Sem 2</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;border-radius:4px 4px 0 0;background:var(--accent);opacity:.3;height:75%"></div><div style="font-size:9px;color:var(--text2)">Sem 3</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;border-radius:4px 4px 0 0;background:var(--accent);opacity:.85;height:90%"></div><div style="font-size:9px;color:var(--accent);font-weight:600">Sem 4</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-panel">
+          <div class="panel-header"><div class="panel-title">Serviços mais realizados</div></div>
+          <div class="panel-body">
+            <div class="horiz-bar-row"><div class="horiz-bar-label">Corte + Barba</div><div class="horiz-bar-track"><div class="horiz-bar-fill" style="width:80%;background:var(--accent)"></div></div><div class="horiz-bar-val">124x</div></div>
+            <div class="horiz-bar-row"><div class="horiz-bar-label">Corte</div><div class="horiz-bar-track"><div class="horiz-bar-fill" style="width:60%;background:var(--purple)"></div></div><div class="horiz-bar-val">93x</div></div>
+            <div class="horiz-bar-row"><div class="horiz-bar-label">Barba</div><div class="horiz-bar-track"><div class="horiz-bar-fill" style="width:35%;background:var(--yellow)"></div></div><div class="horiz-bar-val">54x</div></div>
+          </div>
+        </div>
+        <div class="chart-panel" style="grid-column:span 2">
+          <div class="panel-header"><div class="panel-title">Ocupação por profissional (mês)</div></div>
+          <div class="panel-body" style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="client-avatar" style="background:var(--accent-dim);color:var(--accent);width:32px;height:32px;border-radius:8px;font-size:12px">JS</div>
+              <div style="flex:1"><div style="font-size:12px;font-weight:600;margin-bottom:5px">João Silva</div><div style="height:8px;background:var(--bg2);border-radius:4px;overflow:hidden"><div style="width:75%;height:100%;background:var(--accent);border-radius:4px"></div></div></div>
+              <div style="font-size:13px;font-weight:700;color:var(--accent)">75%</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="client-avatar" style="background:var(--purple-dim);color:var(--purple);width:32px;height:32px;border-radius:8px;font-size:12px">CM</div>
+              <div style="flex:1"><div style="font-size:12px;font-weight:600;margin-bottom:5px">Carlos Mendes</div><div style="height:8px;background:var(--bg2);border-radius:4px;overflow:hidden"><div style="width:58%;height:100%;background:var(--purple);border-radius:4px"></div></div></div>
+              <div style="font-size:13px;font-weight:700;color:var(--purple)">58%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TWEAKS -->
+<div id="tweaks-panel">
+  <h3>Tweaks</h3>
+  <div class="tweak-row">
+    <label>Cor de destaque</label>
+    <div class="tweak-colors">
+      <div class="tweak-swatch active" style="background:#4ecca3" data-color="#4ecca3" data-dim="rgba(78,204,163,0.10)"></div>
+      <div class="tweak-swatch" style="background:#7b6ef6" data-color="#7b6ef6" data-dim="rgba(123,110,246,0.10)"></div>
+      <div class="tweak-swatch" style="background:#3b9eff" data-color="#3b9eff" data-dim="rgba(59,158,255,0.10)"></div>
+      <div class="tweak-swatch" style="background:#ff6b35" data-color="#ff6b35" data-dim="rgba(255,107,53,0.10)"></div>
+    </div>
+  </div>
+  <div class="tweak-row">
+    <label>Sidebar compacta</label>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+      <input type="checkbox" id="tweak-compact" style="accent-color:var(--accent)">
+      <span>Ativar</span>
+    </label>
+  </div>
+</div>
+
+<script>
+const SCREENS = ['dashboard','agenda','servicos','profissionais','clientes','relatorios'];
+const TITLES = { dashboard:'Dashboard', agenda:'Agenda', servicos:'Serviços', profissionais:'Profissionais', clientes:'Clientes', relatorios:'Relatórios' };
+function setScreen(name) {
+  SCREENS.forEach(s => {
+    const el = document.getElementById('screen-' + s);
+    if (el) el.style.display = s === name ? 'flex' : 'none';
+  });
+  document.querySelectorAll('.screen-tab').forEach((t, i) => t.classList.toggle('active', SCREENS[i] === name));
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.getAttribute('onclick')?.includes("'" + name + "'"));
+  });
+  document.getElementById('topbar-title').textContent = TITLES[name] || name;
+  localStorage.setItem('kodigo_screen', name);
+}
+function openModal(id, name) {
+  const overlay = document.getElementById(id);
+  if (!overlay) return;
+  if (id === 'modal-servico') {
+    document.getElementById('modal-servico-title').textContent = name ? 'Editar serviço' : 'Novo serviço';
+    document.getElementById('input-servico-nome').value = name || '';
+    document.getElementById('btn-del-servico').style.display = name ? '' : 'none';
+  }
+  if (id === 'modal-profissional') {
+    document.getElementById('modal-prof-title').textContent = name ? 'Editar profissional' : 'Novo profissional';
+    document.getElementById('input-prof-nome').value = name || '';
+    document.getElementById('btn-del-prof').style.display = name ? '' : 'none';
+  }
+  if (id === 'modal-confirma-del') {
+    document.getElementById('modal-del-nome').textContent = name || '';
+  }
+  if (id === 'modal-cliente') {
+    document.getElementById('modal-cliente-title').textContent = name || 'Cliente';
+  }
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id)?.classList.remove('open');
+  document.body.style.overflow = '';
+}
+function closeModalOutside(e, id) {
+  if (e.target.id === id) closeModal(id);
+}
+
+// Restore
+const saved = localStorage.getItem('kodigo_screen');
+if (saved) setScreen(saved);
+
+// Tweaks
+window.addEventListener('message', e => {
+  if (e.data?.type === '__activate_edit_mode') document.getElementById('tweaks-panel').style.display = 'flex';
+  if (e.data?.type === '__deactivate_edit_mode') document.getElementById('tweaks-panel').style.display = 'none';
+});
+window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+
+document.querySelectorAll('.tweak-swatch').forEach(sw => {
+  sw.addEventListener('click', () => {
+    document.querySelectorAll('.tweak-swatch').forEach(s => s.classList.remove('active'));
+    sw.classList.add('active');
+    document.documentElement.style.setProperty('--accent', sw.dataset.color);
+    document.documentElement.style.setProperty('--accent-dim', sw.dataset.dim);
+  });
+});
+
+document.getElementById('tweak-compact').addEventListener('change', e => {
+  document.querySelector('.sidebar').style.width = e.target.checked ? '56px' : 'var(--sidebar-w)';
+  document.querySelectorAll('.sidebar-logo .logo-text, .biz-name, .biz-plan, .nav-section-label, .ws-text, .ws-num').forEach(el => {
+    el.style.display = e.target.checked ? 'none' : '';
+  });
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.style.justifyContent = e.target.checked ? 'center' : '';
+    el.style.padding = e.target.checked ? '9px 0' : '';
+  });
+});
+</script>
+
+<!-- ══ MODALS ══ -->
+
+<!-- Modal: Serviço -->
+<div class="modal-overlay" id="modal-servico" onclick="closeModalOutside(event,'modal-servico')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-servico-title">Novo serviço</div>
+      <button class="modal-close" onclick="closeModal('modal-servico')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <div class="form-label">Nome do serviço</div>
+        <input class="form-input" type="text" id="input-servico-nome" placeholder="Ex: Corte de Cabelo">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Duração (minutos)</div>
+          <input class="form-input" type="number" id="input-servico-duracao" placeholder="30" min="5" step="5">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Preço (R$)</div>
+          <input class="form-input" type="number" id="input-servico-preco" placeholder="35,00" min="0" step="0.5">
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Descrição (opcional)</div>
+        <textarea class="form-textarea" id="input-servico-desc" placeholder="Descreva o serviço brevemente..."></textarea>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Profissionais que realizam</div>
+        <div class="checkbox-group">
+          <div class="checkbox-item"><input type="checkbox" id="chk-js" checked><label for="chk-js">João Silva</label></div>
+          <div class="checkbox-item"><input type="checkbox" id="chk-cm"><label for="chk-cm">Carlos Mendes</label></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-danger" id="btn-del-servico" style="display:none" onclick="closeModal('modal-servico')">Excluir serviço</button>
+      <button class="btn-cancel" onclick="closeModal('modal-servico')">Cancelar</button>
+      <button class="btn-save" onclick="closeModal('modal-servico')">Salvar serviço</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Profissional -->
+<div class="modal-overlay" id="modal-profissional" onclick="closeModalOutside(event,'modal-profissional')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-prof-title">Novo profissional</div>
+      <button class="modal-close" onclick="closeModal('modal-profissional')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <div class="form-label">Nome completo</div>
+        <input class="form-input" type="text" id="input-prof-nome" placeholder="Ex: João Silva">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">WhatsApp</div>
+          <input class="form-input" type="text" placeholder="+55 11 9••••-••••">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Início do expediente</div>
+          <input class="form-input" type="time" value="09:00">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Fim do expediente</div>
+          <input class="form-input" type="time" value="18:00">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Intervalo (min)</div>
+          <input class="form-input" type="number" value="60" placeholder="60">
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Serviços que realiza</div>
+        <div class="checkbox-group">
+          <div class="checkbox-item"><input type="checkbox" id="chk-p-corte" checked><label for="chk-p-corte">Corte de Cabelo · 30min · R$35</label></div>
+          <div class="checkbox-item"><input type="checkbox" id="chk-p-barba"><label for="chk-p-barba">Barba · 20min · R$25</label></div>
+          <div class="checkbox-item"><input type="checkbox" id="chk-p-combo" checked><label for="chk-p-combo">Corte + Barba · 45min · R$55</label></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-danger" id="btn-del-prof" style="display:none" onclick="closeModal('modal-profissional')">Excluir profissional</button>
+      <button class="btn-cancel" onclick="closeModal('modal-profissional')">Cancelar</button>
+      <button class="btn-save" onclick="closeModal('modal-profissional')">Salvar profissional</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Cliente (histórico) -->
+<div class="modal-overlay" id="modal-cliente" onclick="closeModalOutside(event,'modal-cliente')">
+  <div class="modal" style="width:540px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-cliente-title">Ricardo Oliveira</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">+55 11 99123-4567 · Desde jan/2025</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-cliente')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:4px">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;color:var(--accent)">24</div>
+          <div style="font-size:11px;color:var(--text3)">Visitas</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;color:var(--purple)">R$45</div>
+          <div style="font-size:11px;color:var(--text3)">Ticket médio</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;color:var(--yellow)">~28d</div>
+          <div style="font-size:11px;color:var(--text3)">Freq. média</div>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Últimas visitas</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px">
+          <div style="font-size:12px;color:var(--text3);width:80px;flex-shrink:0">23/04/2026</div>
+          <div style="flex:1;font-size:13px;font-weight:500">Corte + Barba</div>
+          <div style="font-size:12px;color:var(--accent)">João Silva</div>
+          <span class="badge badge-green">Concluído</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px">
+          <div style="font-size:12px;color:var(--text3);width:80px;flex-shrink:0">26/03/2026</div>
+          <div style="flex:1;font-size:13px;font-weight:500">Corte</div>
+          <div style="font-size:12px;color:var(--accent)">João Silva</div>
+          <span class="badge badge-green">Concluído</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px">
+          <div style="font-size:12px;color:var(--text3);width:80px;flex-shrink:0">27/02/2026</div>
+          <div style="flex:1;font-size:13px;font-weight:500">Corte + Barba</div>
+          <div style="font-size:12px;color:var(--purple)">Carlos Mendes</div>
+          <span class="badge badge-red">Cancelado</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-cliente')">Fechar</button>
+      <button class="btn-save" onclick="closeModal('modal-cliente')">Agendar agora</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmar exclusão -->
+<div class="modal-overlay" id="modal-confirma-del" onclick="closeModalOutside(event,'modal-confirma-del')">
+  <div class="modal" style="width:380px">
+    <div class="modal-header">
+      <div class="modal-title" style="color:var(--red)">Confirmar exclusão</div>
+      <button class="modal-close" onclick="closeModal('modal-confirma-del')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:14px;color:var(--text3);line-height:1.6">
+        Tem certeza que quer remover <strong id="modal-del-nome" style="color:var(--text)"></strong>? Essa ação não pode ser desfeita.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-confirma-del')">Cancelar</button>
+      <button class="btn-danger" style="margin-right:0;border-radius:8px;padding:9px 20px" onclick="closeModal('modal-confirma-del')">Sim, excluir</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
