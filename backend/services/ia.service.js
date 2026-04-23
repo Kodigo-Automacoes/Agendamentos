@@ -56,15 +56,28 @@ Regras:
 3) Se o usuário já informou data/horário, não deixe esses campos nulos.
 `.trim();
 
-  const resp = await client.chat.completions.create({
-    model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
-    temperature: 0,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: text },
-    ],
-  });
+  let resp;
+  try {
+    resp = await client.chat.completions.create({
+      model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+      temperature: 0,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: text },
+      ],
+    });
+  } catch (err) {
+    // 401 / timeout / rate-limit não devem derrubar o webhook —
+    // o caller faz fallback para parser determinístico (hasSinalAgendamento + dateParser).
+    console.warn("[ia] OpenAI falhou, caindo no fallback:", err?.status || "", err?.message);
+    return {
+      intent: "outro",
+      entities: { data: null, periodo: null, servico: null, profissional: null, horario: null },
+      confidence: 0,
+      _error: err?.message || String(err),
+    };
+  }
 
   const content = resp.choices?.[0]?.message?.content || "{}";
   try {
