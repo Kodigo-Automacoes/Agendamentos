@@ -9,8 +9,12 @@
 // ============================================================
 
 const express = require("express");
+const fs = require("fs");
+const path = require("path");
 const router = express.Router();
 const { pool } = require("../config/db");
+
+const MIGRATIONS_DIR = path.join(__dirname, "..", "..", "migrations");
 
 function send(res, status, payload) {
   return res.status(status).json(payload);
@@ -277,6 +281,88 @@ router.post("/api/admin/seed-demo", async (req, res) => {
 });
 
 // ------------------------------------------------------------
+// POST /api/admin/migrate — roda os arquivos .sql de /migrations
+// que ainda não foram aplicados (controle em integracoes.migracao_aplicada).
+// Idempotente. Roda em ordem alfabética.
+// ------------------------------------------------------------
+router.post("/api/admin/migrate", async (req, res) => {
+  const onlyFile = req.body?.only ? String(req.body.only) : null;
+  try {
+    // Tabela de controle (cria se não existir)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS integracoes.migracao_aplicada (
+        nome TEXT PRIMARY KEY,
+        aplicada_em TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+
+    const files = fs.readdirSync(MIGRATIONS_DIR)
+      .filter((f) => f.endsWith(".sql") && f !== "verify_schema.sql")
+      .sort();
+
+    const aplicadas = new Set(
+      (await pool.query("SELECT nome FROM integracoes.migracao_aplicada")).rows.map((r) => r.nome)
+    );
+
+    const resultados = [];
+    for (const file of files) {
+      if (onlyFile && file !== onlyFile) continue;
+      if (aplicadas.has(file) && !onlyFile) {
+        resultados.push({ file, status: "skip (já aplicada)" });
+        continue;
+      }
+      const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), "utf8");
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query(sql);
+        await client.query(
+          `INSERT INTO integracoes.migracao_aplicada (nome) VALUES ($1)
+             ON CONFLICT (nome) DO UPDATE SET aplicada_em = now()`,
+          [file]
+        );
+        await client.query("COMMIT");
+        resultados.push({ file, status: "OK" });
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => {});
+        resultados.push({ file, status: "ERRO", erro: err.message });
+        if (!onlyFile) break; // para na primeira falha (sequência)
+      } finally {
+        client.release();
+      }
+    }
+
+    return send(res, 200, { resultados });
+  } catch (err) {
+    return send(res, 500, { erro: err.message });
+  }
+});
+
+// ------------------------------------------------------------
+// GET /api/admin/whatsapp-debug?limit=20
+// Mostra as últimas mensagens com payload completo, pra debugar o webhook.
+// ------------------------------------------------------------
+router.get("/api/admin/whatsapp-debug", async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 20, 200);
+    const { rows } = await pool.query(`
+      SELECT m.id, m.created_at, m.direcao, m.message_id, m.message_type, m.texto,
+             c.whatsapp_e164 AS cliente_whatsapp,
+             m.payload->'data'->'key'->>'fromMe' AS from_me,
+             m.payload->'data'->'key'->>'remoteJid' AS remote_jid,
+             m.payload->>'instance' AS instance
+        FROM integracoes.whatsapp_mensagem m
+        LEFT JOIN crm.cliente c ON c.id = m.cliente_id
+       ORDER BY m.created_at DESC
+       LIMIT $1
+    `, [limit]);
+    return send(res, 200, rows);
+  } catch (err) {
+    return send(res, 500, { erro: err.message });
+  }
+});
+
+// ------------------------------------------------------------
 // GET /api/admin/dashboard/stats — métricas globais do SaaS
 // ------------------------------------------------------------
 router.get("/api/admin/dashboard/stats", async (req, res) => {
@@ -307,7 +393,7 @@ router.get("/api/admin/empresas", async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT
-        e.id, e.nome, e.ativo, e.created_at,
+        e.id, e.codigo, e.nome, e.ativo, e.created_at,
         (SELECT COUNT(*)::int FROM core.unidade u WHERE u.empresa_id = e.id) AS unidades,
         (SELECT COUNT(*)::int FROM agenda.profissional p WHERE p.empresa_id = e.id AND p.ativo = true) AS profissionais,
         (SELECT COUNT(*)::int FROM agenda.agendamento a

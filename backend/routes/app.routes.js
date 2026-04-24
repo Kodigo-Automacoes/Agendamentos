@@ -114,10 +114,10 @@ router.get("/api/app/agendamentos", async (req, res) => {
     }
 
     const sql = `
-      SELECT a.id, a.inicio, a.fim, a.status, a.origem, a.preco_previsto, a.preco_final,
-             a.cliente_id, c.nome AS cliente_nome, c.whatsapp_e164,
-             a.profissional_id, p.nome AS profissional_nome,
-             a.servico_id, s.nome AS servico_nome, s.duracao_padrao_min
+      SELECT a.id, a.codigo, a.inicio, a.fim, a.status, a.origem, a.preco_previsto, a.preco_final,
+             a.cliente_id, c.codigo AS cliente_codigo, c.nome AS cliente_nome, c.whatsapp_e164,
+             a.profissional_id, p.codigo AS profissional_codigo, p.nome AS profissional_nome,
+             a.servico_id, s.codigo AS servico_codigo, s.nome AS servico_nome, s.duracao_padrao_min
       FROM agenda.agendamento a
       JOIN crm.cliente c ON c.id = a.cliente_id
       JOIN agenda.profissional p ON p.id = a.profissional_id
@@ -142,10 +142,10 @@ router.get("/api/app/servicos", async (req, res) => {
   try {
     const { empresa_id } = empresaCtx();
     const { rows } = await pool.query(
-      `SELECT id, nome, duracao_padrao_min, preco_padrao, ativo, created_at
+      `SELECT id, codigo, nome, duracao_padrao_min, preco_padrao, ativo, created_at
        FROM agenda.servico
        WHERE empresa_id = $1
-       ORDER BY ativo DESC, nome ASC`,
+       ORDER BY ativo DESC, codigo ASC`,
       [empresa_id]
     );
     return send(res, 200, rows);
@@ -168,7 +168,7 @@ router.post("/api/app/servicos", async (req, res) => {
              preco_padrao       = EXCLUDED.preco_padrao,
              ativo              = true,
              updated_at         = now()
-       RETURNING id, nome, duracao_padrao_min, preco_padrao, ativo`,
+       RETURNING id, codigo, nome, duracao_padrao_min, preco_padrao, ativo`,
       [empresa_id, String(nome).trim(), Number(duracao_padrao_min) || 30, Number(preco_padrao) || 0]
     );
     return send(res, 200, rows[0]);
@@ -191,7 +191,7 @@ router.put("/api/app/servicos/:id", async (req, res) => {
               ativo = COALESCE($6, ativo),
               updated_at = now()
         WHERE id = $1 AND empresa_id = $2
-        RETURNING id, nome, duracao_padrao_min, preco_padrao, ativo`,
+        RETURNING id, codigo, nome, duracao_padrao_min, preco_padrao, ativo`,
       [
         id, empresa_id,
         body.nome ?? null,
@@ -235,7 +235,7 @@ router.get("/api/app/profissionais", async (req, res) => {
     const { rows } = await pool.query(
       `
       SELECT
-        p.id, p.nome, p.ativo, p.created_at,
+        p.id, p.codigo, p.nome, p.ativo, p.created_at,
         COALESCE(
           (SELECT array_agg(s.nome ORDER BY s.nome)
            FROM agenda.profissional_servico ps
@@ -248,7 +248,7 @@ router.get("/api/app/profissionais", async (req, res) => {
             AND a.inicio >= date_trunc('month', CURRENT_DATE)) AS agend_mes
       FROM agenda.profissional p
       WHERE p.empresa_id = $1 AND p.unidade_id = $2
-      ORDER BY p.ativo DESC, p.nome ASC
+      ORDER BY p.ativo DESC, p.codigo ASC
       `,
       [empresa_id, unidade_id]
     );
@@ -269,7 +269,7 @@ router.post("/api/app/profissionais", async (req, res) => {
        VALUES ($1, $2, $3, true)
        ON CONFLICT (empresa_id, unidade_id, nome) DO UPDATE
          SET ativo = true, updated_at = now()
-       RETURNING id, nome, ativo`,
+       RETURNING id, codigo, nome, ativo`,
       [empresa_id, unidade_id, String(nome).trim()]
     );
     return send(res, 200, rows[0]);
@@ -290,7 +290,7 @@ router.put("/api/app/profissionais/:id", async (req, res) => {
               ativo = COALESCE($4, ativo),
               updated_at = now()
         WHERE id = $1 AND empresa_id = $2
-        RETURNING id, nome, ativo`,
+        RETURNING id, codigo, nome, ativo`,
       [id, empresa_id, body.nome ?? null, body.ativo ?? null]
     );
     if (!rows.length) return send(res, 404, { erro: "Profissional não encontrado" });
@@ -326,7 +326,7 @@ router.get("/api/app/clientes", async (req, res) => {
     const { empresa_id } = empresaCtx();
     const { rows } = await pool.query(
       `
-      SELECT c.id, c.nome, c.whatsapp_e164, c.ativo, c.created_at,
+      SELECT c.id, c.codigo, c.nome, c.whatsapp_e164, c.ativo, c.created_at,
              COALESCE(agg.total_visitas, 0) AS total_visitas,
              agg.ultima_visita,
              agg.ticket_medio
@@ -342,7 +342,7 @@ router.get("/api/app/clientes", async (req, res) => {
           AND a.status IN ('confirmado', 'realizado')
       ) agg ON true
       WHERE c.empresa_id = $1
-      ORDER BY agg.ultima_visita DESC NULLS LAST, c.nome ASC
+      ORDER BY agg.ultima_visita DESC NULLS LAST, c.codigo ASC
       LIMIT 500
       `,
       [empresa_id]

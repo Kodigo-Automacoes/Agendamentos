@@ -161,7 +161,10 @@
       const pal = PALETTE[i % PALETTE.length];
       return `
         <div class="service-card" style="--sc-color:var(${'--' + pal.name})" data-servico-id="${esc(s.id)}">
-          <div class="service-title">${esc(s.nome)}</div>
+          <div class="service-title">
+            <span style="font-family:'Plus Jakarta Sans',sans-serif;color:var(--text3);font-size:13px;margin-right:6px">#${esc(s.codigo ?? '')}</span>
+            ${esc(s.nome)}
+          </div>
           <div class="service-tags">
             <span class="service-tag">${esc(s.duracao_padrao_min)} min</span>
             <span class="service-tag">${esc(formatCurrency(s.preco_padrao))}</span>
@@ -193,7 +196,10 @@
           ${esc(initials(p.nome))}
         </div>
         <div class="prof-info">
-          <div class="prof-name">${esc(p.nome)}</div>
+          <div class="prof-name">
+            <span style="font-family:'Plus Jakarta Sans',sans-serif;color:var(--text3);font-size:13px;margin-right:6px">#${esc(p.codigo ?? '')}</span>
+            ${esc(p.nome)}
+          </div>
           <div class="prof-tags">
             ${(p.servicos || []).map((sv) => `<span class="prof-tag">${esc(sv)}</span>`).join('')}
           </div>
@@ -229,7 +235,10 @@
             <div class="client-cell">
               <div class="client-avatar" style="background:${pal.bg};color:${pal.fg}">${esc(initials(c.nome))}</div>
               <div>
-                <div style="font-weight:600">${esc(c.nome || 'Sem nome')}</div>
+                <div style="font-weight:600">
+                  <span style="font-family:'Plus Jakarta Sans',sans-serif;color:var(--text3);font-size:12px;margin-right:6px">#${esc(c.codigo ?? '')}</span>
+                  ${esc(c.nome || 'Sem nome')}
+                </div>
                 <div style="font-size:11px;color:var(--text3)">${c.created_at ? 'Desde ' + new Date(c.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) : ''}</div>
               </div>
             </div>

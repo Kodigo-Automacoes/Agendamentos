@@ -68,7 +68,10 @@
           <div style="display:flex;align-items:center;gap:10px">
             <div style="width:32px;height:32px;border-radius:6px;background:linear-gradient(135deg,var(--purple),var(--accent));display:flex;align-items:center;justify-content:center;color:#07090e;font-weight:800">${esc(initials(e.nome))}</div>
             <div>
-              <div style="font-weight:600">${esc(e.nome)}</div>
+              <div style="font-weight:600">
+                <span style="font-family:'Plus Jakarta Sans',sans-serif;color:var(--text3);font-size:12px;margin-right:6px">#${esc(e.codigo ?? '')}</span>
+                ${esc(e.nome)}
+              </div>
               <div style="font-size:11px;color:var(--text3)">${esc(e.email || '—')}</div>
             </div>
           </div>

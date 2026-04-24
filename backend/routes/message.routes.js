@@ -172,7 +172,7 @@ function normalizeIncomingPayload(payload = {}, { providerHint = null } = {}) {
   };
 }
 
-function shouldProcessInboundMessage(normalized) {
+async function shouldProcessInboundMessage(normalized) {
   if (!normalized?.from_raw) {
     return { process: false, reason: 'missing_sender' };
   }
@@ -181,8 +181,30 @@ function shouldProcessInboundMessage(normalized) {
     return { process: false, reason: 'missing_text' };
   }
 
+  // fromMe=true normalmente é eco de mensagem que NÓS enviamos. Mas quando o
+  // dono da instância está testando consigo mesmo (envia do mesmo telefone que
+  // está conectado na Evolution), todas as mensagens dele vêm fromMe=true e
+  // precisamos processar. Distinguimos verificando se o message_id já está
+  // gravado como mensagem de saída — se sim, é nosso eco e ignoramos.
   if (normalized.from_me) {
-    return { process: false, reason: 'outbound_event' };
+    if (!normalized.message_id) {
+      return { process: false, reason: 'outbound_event_without_id' };
+    }
+    try {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM integracoes.whatsapp_mensagem
+          WHERE direcao = 'out' AND message_id = $1 LIMIT 1`,
+        [normalized.message_id]
+      );
+      if (rows.length) {
+        return { process: false, reason: 'outbound_event_self' };
+      }
+      // fromMe=true mas não está em direcao=out → é o dono enviando do próprio
+      // número conectado (modo self-test). Processa.
+    } catch (err) {
+      console.warn('[shouldProcessInboundMessage] erro checando outbound:', err.message);
+      return { process: false, reason: 'outbound_event' };
+    }
   }
 
   if (normalized.remote_jid && /@g\.us$|@newsletter$/i.test(normalized.remote_jid)) {
@@ -887,10 +909,15 @@ async function maybeDeliverViaEvolution({
         text: m.text,
       });
       sent += 1;
+      // Captura o message_id retornado pela Evolution para identificar o
+      // eco no webhook (caso o dono esteja testando consigo mesmo).
+      const sentMessageId = sentMsg?.data?.key?.id || sentMsg?.data?.id || null;
       results.push({
         ok: true,
         destination: sentMsg.destination,
         status: sentMsg.status,
+        message_id: sentMessageId,
+        text: m.text,
       });
     } catch (error) {
       results.push({
@@ -984,7 +1011,7 @@ async function processMessageRouterPayload(payload, options = {}) {
   const normalized = normalizeIncomingPayload(payload || {}, { providerHint: options.providerHint || null });
 
   try {
-    const inbound = shouldProcessInboundMessage(normalized);
+    const inbound = await shouldProcessInboundMessage(normalized);
     if (!inbound.process) {
       return {
         statusCode: 200,
@@ -1182,22 +1209,8 @@ async function processMessageRouterPayload(payload, options = {}) {
       source,
     };
 
-    // 10) Log outbound
-    for (const m of response.messages || []) {
-      await logMensagem({
-        empresa_id,
-        unidade_id,
-        canal_id,
-        cliente_id,
-        direcao: 'out',
-        message_id: null,
-        message_type: m.type || 'text',
-        texto: m.text,
-        payload: null,
-      });
-    }
-
-    // 11) Entrega direta (Evolution API → WuzAPI fallback, sem N8N)
+    // 10) Entrega direta (Evolution API → WuzAPI fallback, sem N8N)
+    //     Feita ANTES do log de outbound pra capturar o message_id retornado.
     const shouldDeliverNow =
       options.deliverNow === true ||
       parseBoolean(payload?.send_direct, false) ||
@@ -1212,6 +1225,26 @@ async function processMessageRouterPayload(payload, options = {}) {
       enabled: shouldDeliverNow,
       provedor: provedor,
     });
+
+    // 11) Log outbound — usa message_id real entregue (essencial pra
+    //     filtrar o eco do próprio bot quando o dono testa consigo mesmo).
+    const deliveryResults = response.delivery?.results || [];
+    let deliveryIdx = 0;
+    for (const m of response.messages || []) {
+      const r = deliveryResults[deliveryIdx++];
+      const sentMessageId = r?.ok ? (r.message_id || null) : null;
+      await logMensagem({
+        empresa_id,
+        unidade_id,
+        canal_id,
+        cliente_id,
+        direcao: 'out',
+        message_id: sentMessageId,
+        message_type: m.type || 'text',
+        texto: m.text,
+        payload: null,
+      });
+    }
 
     return { statusCode: 200, response };
   } catch (err) {
