@@ -109,16 +109,70 @@ function normalizeIncomingPayload(payload = {}, { providerHint = null } = {}) {
     evoData.messageType,
   ]) || 'text';
 
-  const fromRaw = pickFirstString([
-    payload.from_whatsapp_e164,
-    payload.from,
-    payload.sender,
-    payload.author,
-    payload?.data?.from,
+  const fromMeRaw = payload?.fromMe ?? payload?.data?.fromMe ?? evoKey.fromMe;
+  const fromMe = typeof fromMeRaw === 'boolean' ? fromMeRaw : parseBoolean(fromMeRaw, false);
+
+  // ----------------------------------------------------------
+  // Resolução de remetente / destinatário (Evolution v2 + N8N legado).
+  //
+  // Em mensagem 1:1 da Evolution, a fonte de verdade é:
+  //   - fromMe=false → o REMETENTE é key.remoteJid (o "outro lado").
+  //   - fromMe=true  → o BOT enviou; key.remoteJid é o destinatário.
+  //
+  // Os campos `payload.from` / `data.from` podem vir preenchidos com o
+  // ownerJid da instância em alguns provedores, o que faz o backend
+  // achar que o cliente é o próprio bot. Por isso priorizamos remoteJid.
+  // ----------------------------------------------------------
+  const remoteJidE164 = extractE164FromJid(remoteJid);
+  const ownerJidGuess = pickFirstString([
+    payload?.owner,
+    payload?.data?.owner,
+    payload?.sender,
     payload?.data?.sender,
-    payload?.message?.from,
-    extractE164FromJid(remoteJid),
   ]);
+
+  let fromRaw;
+  let toNumeroE164;
+  if (fromMe) {
+    // Bot enviou — destinatário é o remoteJid; remetente é o dono.
+    fromRaw = pickFirstString([
+      ownerJidGuess && extractE164FromJid(ownerJidGuess),
+      ownerJidGuess,
+      pickFirstString([payload?.data?.from]),
+    ]);
+    toNumeroE164 = pickFirstString([
+      remoteJidE164,
+      pickFirstString([payload.to_numero_e164, payload.to, payload?.data?.to, payload.recipient, payload?.message?.to]),
+    ]);
+  } else {
+    // Cliente enviou — remetente é o remoteJid; destinatário é o dono da instância.
+    fromRaw = pickFirstString([
+      remoteJidE164,
+      pickFirstString([
+        payload.from_whatsapp_e164,
+        payload.from,
+        payload.author,
+        payload?.message?.from,
+      ]),
+    ]);
+    toNumeroE164 = pickFirstString([
+      payload.to_numero_e164,
+      payload.to,
+      payload?.data?.to,
+      payload.recipient,
+      payload?.message?.to,
+      ownerJidGuess && extractE164FromJid(ownerJidGuess),
+    ]);
+  }
+
+  // Sanity-check: se o `from_raw` resolvido bater com o número do dono
+  // da instância (típico bug onde a Evolution preenche data.from com o
+  // ownerJid), descartamos e usamos o remoteJid.
+  const ownerE164 = ownerJidGuess && extractE164FromJid(ownerJidGuess);
+  if (!fromMe && remoteJidE164 && fromRaw && ownerE164 && fromRaw === ownerE164 && remoteJidE164 !== ownerE164) {
+    console.warn(`[normalize] from_raw=${fromRaw} bate com owner; usando remoteJid=${remoteJidE164}`);
+    fromRaw = remoteJidE164;
+  }
 
   const fromName = pickFirstString([
     payload.from_name,
@@ -127,14 +181,6 @@ function normalizeIncomingPayload(payload = {}, { providerHint = null } = {}) {
     payload?.data?.pushName,
     payload?.message?.pushName,
     evoData.pushName,
-  ]);
-
-  const toNumeroE164 = pickFirstString([
-    payload.to_numero_e164,
-    payload.to,
-    payload?.data?.to,
-    payload.recipient,
-    payload?.message?.to,
   ]);
 
   const instanceKey = pickFirstString([
@@ -151,9 +197,6 @@ function normalizeIncomingPayload(payload = {}, { providerHint = null } = {}) {
     payload.provider,
     providerHint,
   ]) || 'evolution';
-
-  const fromMeRaw = payload?.fromMe ?? payload?.data?.fromMe ?? evoKey.fromMe;
-  const fromMe = typeof fromMeRaw === 'boolean' ? fromMeRaw : parseBoolean(fromMeRaw, false);
 
   return {
     provedor,
