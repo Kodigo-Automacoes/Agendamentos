@@ -383,8 +383,32 @@ function hasSinalAgendamento(texto) {
     t.includes('corte') ||
     t.includes('cabelo') ||
     t.includes('barba') ||
-    t.includes('combo')
+    t.includes('combo') ||
+    t.includes('disponiv') ||
+    t.includes('vaga') ||
+    t.includes('tem hor') ||
+    t.includes('quais hor') ||
+    t.includes('outro dia') ||
+    t.includes('outros dia') ||
+    t.includes('proximo') ||
+    t.includes('próximo')
   );
+}
+
+/**
+ * Detecta respostas afirmativas curtas ("sim", "pode ser", "quero", etc).
+ * Usada para quando o bot pergunta "Quer tentar outro dia?" e o usuário responde afirmativamente.
+ */
+function isRespostaAfirmativa(texto) {
+  const t = normalizeText(texto);
+  const afirmativas = [
+    'sim', 'ss', 'sss', 'pode', 'pode ser', 'quero', 'bora', 'vamos',
+    'claro', 'ok', 'ta', 'tá', 'beleza', 'show', 'com certeza',
+    'positivo', 'afirmativo', 'isso', 'isso mesmo', 'por favor',
+    'pfv', 'please', 'yes', 'yep', 'si', 'dale', 'bora la',
+    's', 'manda', 'manda ver', 'vai', 'vamo', 'vamos la',
+  ];
+  return afirmativas.includes(t) || t.startsWith('sim') || t.startsWith('pode');
 }
 
 /**
@@ -583,21 +607,37 @@ async function handleColetandoDados({ ctx, estadoRow, texto }) {
     const dataISO = parseDataPtBR(texto, { timezone: ctx.timezone });
     if (!dataISO) {
       return reply(
-        'Beleza! Qual dia você prefere?\n' +
+        'Qual dia você prefere? 📅\n' +
         'Pode ser assim:\n' +
         '- amanhã\n' +
-        '- sexta\n' +
-        '- 20/03'
+        '- segunda\n' +
+        '- 28/04'
       );
     }
 
-    // Merge e continuar o fluxo de agendamento
+    // Se já temos serviço e profissional da tentativa anterior,
+    // vai direto listar horários (sem pedir tudo de novo).
     const horario = parseHoraPtBR(texto) || lista.hora_preferida || null;
+    const periodo = periodoFromHora(horario) || inferPeriodoDoTexto(texto) || lista.periodo || 'manha';
+
+    if (lista.servico_id && lista.profissional_id) {
+      return await listarEOferecerHorarios({
+        ctx,
+        profissionalId: lista.profissional_id,
+        servicoId: lista.servico_id,
+        dataISO,
+        periodo,
+        horaPreferida: horario,
+        resumoIA: lista.resumo_ia || {},
+      });
+    }
+
+    // Senão, continua o fluxo normal de agendamento
     const entities = {
       ...(lista.resumo_ia?.entities || {}),
       data: dataISO,
       horario,
-      periodo: periodoFromHora(horario) || lista.periodo || 'manha',
+      periodo,
     };
     return await handleNovoAgendamento({ ctx, entities, resumoIA: lista.resumo_ia || {}, texto });
   }
@@ -645,9 +685,15 @@ async function handleColetandoDados({ ctx, estadoRow, texto }) {
 /**
  * Busca horários livres e oferece 3 opções.
  * Muda estado para aguardando_escolha.
+ *
+ * INTELIGÊNCIA: se não encontra horários no período solicitado,
+ * tenta automaticamente os outros períodos antes de desistir.
+ * Isso evita que o bot diga "não tem horário" quando na verdade
+ * tem horários em outro período do mesmo dia.
  */
 async function listarEOferecerHorarios({ ctx, profissionalId, servicoId, dataISO, periodo, horaPreferida = null, resumoIA, prefixo = '' }) {
-  const slots = await agendaService.listarHorariosLivresUnidade({
+  // 1) Tenta o período solicitado
+  let slots = await agendaService.listarHorariosLivresUnidade({
     unidadeId: ctx.unidade_id,
     profissionalId,
     servicoId,
@@ -656,9 +702,52 @@ async function listarEOferecerHorarios({ ctx, profissionalId, servicoId, dataISO
     limite: 10,
   });
 
+  let periodoUsado = periodo;
+  let msgPeriodoAlternativo = '';
+
+  // 2) Se não encontrou, tenta outros períodos do mesmo dia
   if (!slots.length) {
-    await conversaEstado.clear(ctx.conversa_id);
-    return reply('Não encontrei horários livres nesse período 😕 Quer tentar outro dia ou período?');
+    const todosPeriodos = ['manha', 'tarde', 'noite'];
+    const outrosPeriodos = todosPeriodos.filter(p => p !== periodo);
+
+    for (const outroPeriodo of outrosPeriodos) {
+      slots = await agendaService.listarHorariosLivresUnidade({
+        unidadeId: ctx.unidade_id,
+        profissionalId,
+        servicoId,
+        dataISO,
+        periodo: outroPeriodo,
+        limite: 10,
+      });
+      if (slots.length) {
+        periodoUsado = outroPeriodo;
+        const periodoLabel = { manha: 'de manhã', tarde: 'de tarde', noite: 'de noite' };
+        msgPeriodoAlternativo = `Não achei horários ${periodoLabel[periodo] || periodo}, mas encontrei ${periodoLabel[outroPeriodo] || outroPeriodo}!\n\n`;
+        break;
+      }
+    }
+  }
+
+  // 3) Se ainda não encontrou em nenhum período, oferece trocar dia
+  if (!slots.length) {
+    await conversaEstado.upsert(ctx.conversa_id, {
+      estado: 'coletando_dados',
+      ultima_lista: {
+        falta: 'data',
+        servico_id: servicoId,
+        profissional_id: profissionalId,
+        servico_hint: null,
+        resumo_ia: resumoIA,
+      },
+    });
+    return reply(
+      'Poxa, não encontrei horários livres nesse dia 😕\n' +
+      'Quer tentar outro dia?\n' +
+      'Me diz qual:\n' +
+      '- amanhã\n' +
+      '- segunda\n' +
+      '- 28/04'
+    );
   }
 
   let slotsOrdenados = slots;
@@ -683,7 +772,7 @@ async function listarEOferecerHorarios({ ctx, profissionalId, servicoId, dataISO
       tipo: 'horarios',
       token: token(),
       data: dataISO,
-      periodo,
+      periodo: periodoUsado,
       hora_preferida: horaPreferida,
       servico_id: servicoId,
       profissional_id: profissionalId,
@@ -693,7 +782,7 @@ async function listarEOferecerHorarios({ ctx, profissionalId, servicoId, dataISO
     },
   });
 
-  return reply(prefixo + buildHorarioMenu(opcoes, ctx.timezone));
+  return reply(prefixo + msgPeriodoAlternativo + buildHorarioMenu(opcoes, ctx.timezone));
 }
 
 /**
@@ -1274,14 +1363,32 @@ async function processMessageRouterPayload(payload, options = {}) {
           response = reply('Tive um probleminha aqui 😅 Tenta de novo que já resolvo!');
         }
       } else {
-        // Limpa estado residual e fallback generico
-        if (estadoRow?.estado && estadoRow.estado !== 'idle') {
-          try { await conversaEstado.clear(conversa_id); } catch (_) {}
+        // Verifica se é uma resposta afirmativa a "Quer tentar outro dia?"
+        // (ex: "pode ser", "sim", "quero", etc.)
+        if (isRespostaAfirmativa(text)) {
+          try {
+            await conversaEstado.upsert(conversa_id, {
+              estado: 'coletando_dados',
+              ultima_lista: { falta: 'data', servico_hint: null, resumo_ia: {} },
+            });
+          } catch (_) {}
+          response = reply(
+            'Beleza! Qual dia você prefere? 📅\n' +
+            'Pode ser assim:\n' +
+            '- amanhã\n' +
+            '- segunda\n' +
+            '- 28/04'
+          );
+        } else {
+          // Limpa estado residual e fallback generico
+          if (estadoRow?.estado && estadoRow.estado !== 'idle') {
+            try { await conversaEstado.clear(conversa_id); } catch (_) {}
+          }
+          response = reply(
+            'Consigo ajudar com agendamentos! 🙂\n' +
+            'Me diz o que voce precisa - ex: "quero agendar um corte amanha de manha".'
+          );
         }
-        response = reply(
-          'Consigo ajudar com agendamentos! 🙂\n' +
-          'Me diz o que voce precisa - ex: "quero agendar um corte amanha de manha".'
-        );
       }
     }
 
