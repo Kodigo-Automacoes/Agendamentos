@@ -1,7 +1,8 @@
 // services/conversaEstado.service.js
 // Gerencia o state machine da conversa no Postgres (integracoes.conversa_estado).
 //
-// Colunas: id (PK), estado, intencao_id, ultima_lista (jsonb), updated_at
+// Colunas: id (PK), empresa_id, unidade_id, canal_id, cliente_id,
+//          estado, intencao_id, ultima_lista (jsonb), updated_at
 // Estados: idle | coletando_dados | aguardando_profissional | aguardando_escolha | aguardando_confirmacao
 
 module.exports = (pool) => ({
@@ -20,12 +21,16 @@ module.exports = (pool) => ({
   },
 
   /**
-   * Insere ou atualiza o estado da conversa.
+   * Atualiza o estado da conversa.
+   * Usa UPDATE (a linha já deve existir — criada por get_or_create_conversa_estado).
+   * Se a linha não existir (caso raro), loga warning mas NÃO dá throw — 
+   * o antigo throw matava toda a resposta do webhook silenciosamente.
    */
   async upsert(conversaId, patch) {
     const estado = patch.estado ?? 'idle';
     const intencaoId = patch.intencao_id ?? null;
     const ultimaLista = patch.ultima_lista ?? null;
+    const listaJson = ultimaLista ? JSON.stringify(ultimaLista) : null;
 
     const sql = `
       UPDATE integracoes.conversa_estado
@@ -42,11 +47,14 @@ module.exports = (pool) => ({
       conversaId,
       estado,
       intencaoId,
-      ultimaLista ? JSON.stringify(ultimaLista) : null,
+      listaJson,
     ]);
 
     if (!rows[0]) {
-      throw new Error(`Conversa ${conversaId} não encontrada para atualizar estado`);
+      // Não dá throw — apenas loga. O fluxo continua sem estado persistido.
+      // Isso é melhor que matar a resposta inteira.
+      console.warn(`[conversaEstado] UPDATE não encontrou conversa ${conversaId} — estado não persistido`);
+      return { estado, intencao_id: intencaoId, ultima_lista: ultimaLista, updated_at: new Date().toISOString() };
     }
 
     return rows[0];

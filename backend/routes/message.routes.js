@@ -31,6 +31,22 @@ const servicoResolver = require('../services/servicoResolver.service')(pool);
 const { parseEscolha, parseConfirmacao, parseCancelarFluxo, normalizeText } = require('../utils/flowParser');
 const { parseDataPtBR, parseHoraPtBR, periodoFromHora } = require('../utils/dateParser');
 
+// ===================== Fila por telefone =====================
+// Serializa processamento de mensagens do mesmo remetente para
+// evitar race conditions quando o usuário manda msgs rápidas.
+const phoneQueues = new Map();
+
+async function enqueueByPhone(phoneKey, fn) {
+  const prev = phoneQueues.get(phoneKey) || Promise.resolve();
+  const next = prev.then(fn, fn); // sempre executa, mesmo se anterior falhou
+  phoneQueues.set(phoneKey, next);
+  // Limpa referência quando terminar
+  next.finally(() => {
+    if (phoneQueues.get(phoneKey) === next) phoneQueues.delete(phoneKey);
+  });
+  return next;
+}
+
 // ===================== Helpers de resposta =====================
 
 /**
@@ -254,10 +270,18 @@ async function shouldProcessInboundMessage(normalized) {
     return { process: false, reason: 'group_or_newsletter' };
   }
 
-  if (normalized.event && !['message', 'messages.upsert'].includes(normalized.event)) {
-    // Alguns provedores mandam eventos variados no mesmo webhook; ignoramos os que não são mensagem.
+  // Filtra eventos que claramente NÃO são mensagem.
+  // A Evolution manda event = "messages.upsert" para msgs novas.
+  // Aceitamos qualquer evento que contenha "message" no nome,
+  // e também aceitamos quando event é null/undefined (payload sem campo event).
+  if (normalized.event) {
     const t = normalized.event.toLowerCase();
-    if (!t.includes('message')) {
+    const isMessageEvent = (
+      t === 'message' ||
+      t === 'messages.upsert' ||
+      t.includes('message')
+    );
+    if (!isMessageEvent) {
       return { process: false, reason: `non_message_event:${normalized.event}` };
     }
   }
@@ -1053,6 +1077,8 @@ async function processMessageRouterPayload(payload, options = {}) {
   const source = options.source || 'message_router';
   const normalized = normalizeIncomingPayload(payload || {}, { providerHint: options.providerHint || null });
 
+  console.log(`[${source}] Recebido: from=${normalized.from_raw} text="${(normalized.text || '').slice(0, 80)}" event=${normalized.event} fromMe=${normalized.from_me}`);
+
   try {
     const inbound = await shouldProcessInboundMessage(normalized);
     if (!inbound.process) {
@@ -1190,23 +1216,41 @@ async function processMessageRouterPayload(payload, options = {}) {
     const estadoRow = await conversaEstado.get(conversa_id);
     const textoNorm = normalizeText(text);
 
+    console.log(`[${source}] Estado conversa=${conversa_id}: ${estadoRow?.estado || 'null/idle'}`);
+
     let response = null;
 
     // 7) State machine - estados guiados (sem chamar IA)
-    if (estadoRow?.estado === 'aguardando_escolha') {
-      response = await handleAguardandoEscolha({ ctx, estadoRow, texto: textoNorm });
-    } else if (estadoRow?.estado === 'aguardando_confirmacao') {
-      response = await handleAguardandoConfirmacao({ ctx, estadoRow, texto: textoNorm });
-    } else if (estadoRow?.estado === 'aguardando_profissional') {
-      response = await handleAguardandoProfissional({ ctx, estadoRow, texto: textoNorm });
-    } else if (estadoRow?.estado === 'coletando_dados') {
-      response = await handleColetandoDados({ ctx, estadoRow, texto: textoNorm });
-      // null = nao conseguiu interpretar -> cai para IA abaixo
+    try {
+      if (estadoRow?.estado === 'aguardando_escolha') {
+        response = await handleAguardandoEscolha({ ctx, estadoRow, texto: textoNorm });
+      } else if (estadoRow?.estado === 'aguardando_confirmacao') {
+        response = await handleAguardandoConfirmacao({ ctx, estadoRow, texto: textoNorm });
+      } else if (estadoRow?.estado === 'aguardando_profissional') {
+        response = await handleAguardandoProfissional({ ctx, estadoRow, texto: textoNorm });
+      } else if (estadoRow?.estado === 'coletando_dados') {
+        response = await handleColetandoDados({ ctx, estadoRow, texto: textoNorm });
+        // null = nao conseguiu interpretar -> cai para IA abaixo
+      }
+    } catch (stateErr) {
+      console.error(`[${source}] Erro no state machine (${estadoRow?.estado}):`, stateErr.message);
+      // Limpa estado corrompido e cai pro fallback de IA
+      try { await conversaEstado.clear(conversa_id); } catch (_) {}
+      response = null;
     }
 
     // 8) Estado livre / fallback: chamar IA
     if (!response) {
-      const ia = await classificarMensagemIA({ text, timezone });
+      console.log(`[${source}] Chamando IA para classificar...`);
+      let ia;
+      try {
+        ia = await classificarMensagemIA({ text, timezone });
+      } catch (iaErr) {
+        console.error(`[${source}] Erro na IA:`, iaErr.message);
+        ia = { intent: 'outro', entities: {}, confidence: 0, _error: iaErr.message };
+      }
+      console.log(`[${source}] IA resultado: intent=${ia.intent} confidence=${ia.confidence}`);
+
       const inferred = inferEntitiesFromText(text, timezone);
       const mergedEntities = {
         data: ia?.entities?.data || inferred.data || null,
@@ -1218,16 +1262,21 @@ async function processMessageRouterPayload(payload, options = {}) {
       const shouldHandleAgendamento = ia.intent === 'novo_agendamento' || hasSinalAgendamento(text);
 
       if (shouldHandleAgendamento) {
-        response = await handleNovoAgendamento({
-          ctx,
-          entities: mergedEntities,
-          resumoIA: { ...ia, entities: mergedEntities },
-          texto: text,
-        });
+        try {
+          response = await handleNovoAgendamento({
+            ctx,
+            entities: mergedEntities,
+            resumoIA: { ...ia, entities: mergedEntities },
+            texto: text,
+          });
+        } catch (agendErr) {
+          console.error(`[${source}] Erro em handleNovoAgendamento:`, agendErr.message);
+          response = reply('Tive um probleminha aqui 😅 Tenta de novo que já resolvo!');
+        }
       } else {
         // Limpa estado residual e fallback generico
         if (estadoRow?.estado && estadoRow.estado !== 'idle') {
-          await conversaEstado.clear(conversa_id);
+          try { await conversaEstado.clear(conversa_id); } catch (_) {}
         }
         response = reply(
           'Consigo ajudar com agendamentos! 🙂\n' +
@@ -1260,47 +1309,68 @@ async function processMessageRouterPayload(payload, options = {}) {
       parseBoolean(payload?.send_now, false) ||
       parseBoolean(process.env.EVOLUTION_AUTO_SEND, false);
 
-    response.delivery = await resolveAndDeliver({
-      response,
-      canalId: canal_id,
-      instanceKey: instance_key,
-      destinationE164: from_whatsapp_e164,
-      enabled: shouldDeliverNow,
-      provedor: provedor,
-    });
+    console.log(`[${source}] Entregando resposta: shouldDeliver=${shouldDeliverNow} msgs=${(response.messages || []).length}`);
+
+    try {
+      response.delivery = await resolveAndDeliver({
+        response,
+        canalId: canal_id,
+        instanceKey: instance_key,
+        destinationE164: from_whatsapp_e164,
+        enabled: shouldDeliverNow,
+        provedor: provedor,
+      });
+      console.log(`[${source}] Entrega: provider=${response.delivery?.provider} sent=${response.delivery?.sent} failed=${response.delivery?.failed}`);
+    } catch (deliveryErr) {
+      console.error(`[${source}] Erro na entrega:`, deliveryErr.message);
+      response.delivery = { enabled: true, provider: 'error', sent: 0, failed: 1, error: deliveryErr.message };
+    }
 
     // 11) Log outbound — usa message_id real entregue (essencial pra
     //     filtrar o eco do próprio bot quando o dono testa consigo mesmo).
-    const deliveryResults = response.delivery?.results || [];
-    let deliveryIdx = 0;
-    for (const m of response.messages || []) {
-      const r = deliveryResults[deliveryIdx++];
-      const sentMessageId = r?.ok ? (r.message_id || null) : null;
-      await logMensagem({
-        empresa_id,
-        unidade_id,
-        canal_id,
-        cliente_id,
-        direcao: 'out',
-        message_id: sentMessageId,
-        message_type: m.type || 'text',
-        texto: m.text,
-        payload: null,
-      });
+    try {
+      const deliveryResults = response.delivery?.results || [];
+      let deliveryIdx = 0;
+      for (const m of response.messages || []) {
+        const r = deliveryResults[deliveryIdx++];
+        const sentMessageId = r?.ok ? (r.message_id || null) : null;
+        await logMensagem({
+          empresa_id,
+          unidade_id,
+          canal_id,
+          cliente_id,
+          direcao: 'out',
+          message_id: sentMessageId,
+          message_type: m.type || 'text',
+          texto: m.text,
+          payload: null,
+        });
+      }
+    } catch (logErr) {
+      console.error(`[${source}] Erro ao logar outbound:`, logErr.message);
     }
 
     return { statusCode: 200, response };
   } catch (err) {
-    console.error(`[message-router:${source}] Erro:`, err);
-    return {
-      statusCode: 500,
-      response: {
-        action: 'reply',
-        shouldReply: true,
-        messages: [{ type: 'text', text: 'Erro interno 😕' }],
-        debug: { source, error: err.message },
-      },
+    console.error(`[message-router:${source}] Erro GERAL:`, err);
+    // Tenta enviar mensagem de erro mesmo em falha catastrófica
+    const errorResponse = {
+      action: 'reply',
+      shouldReply: true,
+      messages: [{ type: 'text', text: 'Tive um probleminha 😕 Tenta de novo!' }],
+      debug: { source, error: err.message },
     };
+    // Tenta entregar a mensagem de erro
+    if (options.deliverNow) {
+      try {
+        const normalized2 = normalizeIncomingPayload(payload || {}, {});
+        const dest = normalized2.from_raw;
+        if (dest) {
+          await sendTextViaEvolution({ to: dest, text: errorResponse.messages[0].text }).catch(() => {});
+        }
+      } catch (_) {}
+    }
+    return { statusCode: 200, response: errorResponse };
   }
 }
 
@@ -1370,12 +1440,26 @@ router.post('/evolution/webhook', async (req, res) => {
     return res.status(401).json({ erro: 'unauthorized_webhook' });
   }
 
-  const result = await processMessageRouterPayload(req.body || {}, {
-    source: 'evolution_webhook',
-    providerHint: 'evolution',
-    deliverNow: true,
+  // Responde 200 IMEDIATAMENTE para a Evolution não dar timeout.
+  // O processamento real acontece em background.
+  res.status(200).json({ ok: true, queued: true });
+
+  // Extrai phone key para serializar mensagens do mesmo remetente
+  const normalized = normalizeIncomingPayload(req.body || {}, { providerHint: 'evolution' });
+  const phoneKey = normalized.from_raw || normalized.remote_jid || 'unknown';
+
+  // Processa em background, serializado por telefone
+  enqueueByPhone(phoneKey, async () => {
+    try {
+      await processMessageRouterPayload(req.body || {}, {
+        source: 'evolution_webhook',
+        providerHint: 'evolution',
+        deliverNow: true,
+      });
+    } catch (err) {
+      console.error('[evolution/webhook] Erro no processamento async:', err);
+    }
   });
-  return res.status(result.statusCode).json(result.response);
 });
 
 module.exports = {

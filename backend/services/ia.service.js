@@ -13,6 +13,25 @@ function hojeNoTimezone(timezone = "America/Sao_Paulo") {
   }).format(new Date());
 }
 
+/**
+ * Timeout helper — rejeita a promise após `ms` milissegundos.
+ * Usado para proteger contra a OpenAI demorar mais que o timeout do webhook.
+ */
+function withTimeout(promise, ms, label = "OpenAI") {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${label} timeout após ${ms}ms`));
+    }, ms);
+    promise
+      .then((val) => { clearTimeout(timer); resolve(val); })
+      .catch((err) => { clearTimeout(timer); reject(err); });
+  });
+}
+
+// Timeout máximo para a chamada à OpenAI (em ms).
+// Se demorar mais, caímos no fallback determinístico.
+const IA_TIMEOUT_MS = Number(process.env.IA_TIMEOUT_MS || 8000);
+
 async function classificarMensagemIA({ text, timezone = "America/Sao_Paulo", hoje }) {
   const hojeRef = hoje || hojeNoTimezone(timezone);
   const client = await getOpenAIClient();
@@ -58,15 +77,19 @@ Regras:
 
   let resp;
   try {
-    resp = await client.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
-      temperature: 0,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: text },
-      ],
-    });
+    resp = await withTimeout(
+      client.chat.completions.create({
+        model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+        temperature: 0,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: text },
+        ],
+      }),
+      IA_TIMEOUT_MS,
+      "OpenAI classificarMensagemIA"
+    );
   } catch (err) {
     // 401 / timeout / rate-limit não devem derrubar o webhook —
     // o caller faz fallback para parser determinístico (hasSinalAgendamento + dateParser).
