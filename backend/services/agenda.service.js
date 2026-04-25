@@ -13,9 +13,9 @@ module.exports = (pool) => ({
     const sql = `
       SELECT inicio, fim
       FROM agenda.listar_horarios_livres_unidade(
-        $1::uuid,  -- unidade_id
-        $2::uuid,  -- profissional_id
-        $3::uuid,  -- servico_id
+        $1::int,   -- unidade_id
+        $2::int,   -- profissional_id
+        $3::int,   -- servico_id
         $4::date,  -- data
         $5::agenda.periodo_agenda, -- periodo
         $6::int    -- limite
@@ -48,11 +48,11 @@ module.exports = (pool) => ({
     const sql = `
       SELECT *
       FROM agenda.criar_intencao_agendamento(
-        $1::uuid,  -- empresa_id
-        $2::uuid,  -- unidade_id
-        $3::uuid,  -- cliente_id
-        $4::uuid,  -- profissional_id
-        $5::uuid,  -- servico_id
+        $1::int,   -- empresa_id
+        $2::int,   -- unidade_id
+        $3::int,   -- cliente_id
+        $4::int,   -- profissional_id
+        $5::int,   -- servico_id
         $6::timestamptz, -- inicio_sugerido
         $7::text,  -- resumo_ia (texto no schema, armazena JSON serializado)
         $8::jsonb  -- contexto
@@ -74,7 +74,7 @@ module.exports = (pool) => ({
   },
 
   async confirmarIntencao({ intencaoId }) {
-    const sql = `SELECT agenda.confirmar_intencao_agendamento($1::uuid) AS agendamento_id`;
+    const sql = `SELECT agenda.confirmar_intencao_agendamento($1::int) AS agendamento_id`;
     const { rows } = await pool.query(sql, [intencaoId]);
     return rows[0]?.agendamento_id ?? null;
   },
@@ -85,7 +85,7 @@ module.exports = (pool) => ({
    */
   async cancelarIntencao({ intencaoId }) {
     if (!intencaoId) return false;
-    const sql = `SELECT agenda.cancelar_intencao_agendamento($1::uuid) AS cancelada`;
+    const sql = `SELECT agenda.cancelar_intencao_agendamento($1::int) AS cancelada`;
     const { rows } = await pool.query(sql, [intencaoId]);
     return rows[0]?.cancelada ?? false;
   },
@@ -95,7 +95,7 @@ module.exports = (pool) => ({
    * @returns {string} IANA timezone (default: 'America/Sao_Paulo')
    */
   async getTimezoneUnidade(unidadeId) {
-    const sql = `SELECT timezone FROM agenda.config_unidade WHERE unidade_id = $1::uuid LIMIT 1`;
+    const sql = `SELECT timezone FROM agenda.config_unidade WHERE unidade_id = $1::int LIMIT 1`;
     const { rows } = await pool.query(sql, [unidadeId]);
     return rows[0]?.timezone || 'America/Sao_Paulo';
   },

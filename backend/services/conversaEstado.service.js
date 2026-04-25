@@ -14,7 +14,7 @@ module.exports = (pool) => ({
     const sql = `
       SELECT estado, intencao_id, ultima_lista, updated_at
       FROM integracoes.conversa_estado
-      WHERE id = $1::uuid
+      WHERE id = $1::int
     `;
     const { rows } = await pool.query(sql, [conversaId]);
     return rows[0] || null;
@@ -36,10 +36,10 @@ module.exports = (pool) => ({
       UPDATE integracoes.conversa_estado
       SET
         estado       = $2::text,
-        intencao_id  = $3::uuid,
+        intencao_id  = $3::int,
         ultima_lista = $4::jsonb,
         updated_at   = now()
-      WHERE id = $1::uuid
+      WHERE id = $1::int
       RETURNING estado, intencao_id, ultima_lista, updated_at
     `;
 

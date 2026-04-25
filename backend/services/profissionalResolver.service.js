@@ -8,9 +8,9 @@ module.exports = (pool) => ({
       FROM agenda.profissional p
       JOIN agenda.profissional_servico ps
         ON ps.profissional_id = p.id
-      WHERE p.unidade_id = $1::uuid
+      WHERE p.unidade_id = $1::int
         AND p.ativo = true
-        AND ps.servico_id = $2::uuid
+        AND ps.servico_id = $2::int
       ORDER BY p.nome
     `;
     const { rows } = await pool.query(sql, [unidadeId, servicoId]);

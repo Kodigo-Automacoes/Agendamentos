@@ -5,7 +5,11 @@
       "Bash(mkdir -p public public/assets)",
       "Bash(cp \"DESIGN/Landing Page.html\" public/index.html)",
       "Bash(cp \"DESIGN/Painel do Cliente.html\" public/app.html)",
-      "Bash(cp \"DESIGN/Painel Admin.html\" public/admin.html)"
+      "Bash(cp \"DESIGN/Painel Admin.html\" public/admin.html)",
+      "Bash(tasklist)",
+      "Bash(curl -s -m 3 \"http://localhost:3000/healthz\")",
+      "Bash(curl -s -m 3 \"http://localhost:3000/health\")",
+      "Bash(curl -s -m 5 -H \"x-api-key: 8f3c9e21d4a7b6c9f2e8a1b4c7d9e3f5a6b8c1d2e4f7a9b3c6d8e2f1a4b7c9d\" \"http://localhost:3000/api/admin/usuarios\")"
     ]
   }
 }

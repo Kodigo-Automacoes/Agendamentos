@@ -8,8 +8,7 @@ async function getPoliticaContato({ empresa_id, canal_id, whatsapp_e164 }) {
     WHERE empresa_id = $1
       AND canal_id = $2
       AND whatsapp_e164 = $3
-      AND ativo = true
-    ORDER BY updated_at DESC
+    ORDER BY created_at DESC
     LIMIT 1
     `,
     [empresa_id, canal_id, whatsapp_e164]

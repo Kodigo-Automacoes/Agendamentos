@@ -456,12 +456,12 @@ router.get("/api/admin/usuarios", async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT
-        u.id, u.empresa_id, u.unidade_id, u.auth_user_id, u.perfil, u.ativo,
-        u.created_at, u.updated_at,
+        u.id, u.empresa_id, u.unidade_id, u.auth_user_id, u.role,
+        u.created_at,
         e.nome AS empresa_nome
       FROM core.usuario_empresa u
       LEFT JOIN core.empresa e ON e.id = u.empresa_id
-      ORDER BY u.ativo DESC, e.nome, u.perfil
+      ORDER BY e.nome, u.role
       LIMIT 500
     `);
     return send(res, 200, rows);

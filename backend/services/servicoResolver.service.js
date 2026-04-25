@@ -59,7 +59,7 @@ module.exports = (pool) => ({
       FROM agenda.servico s
       JOIN agenda.profissional_servico ps ON ps.servico_id = s.id
       JOIN agenda.profissional p ON p.id = ps.profissional_id
-      WHERE p.unidade_id = $1::uuid
+      WHERE p.unidade_id = $1::int
         AND p.ativo = true
         AND lower(s.nome) ILIKE ANY($3::text[])
       ORDER BY score, s.nome
@@ -80,7 +80,7 @@ module.exports = (pool) => ({
       FROM agenda.servico s
       JOIN agenda.profissional_servico ps ON ps.servico_id = s.id
       JOIN agenda.profissional p ON p.id = ps.profissional_id
-      WHERE p.unidade_id = $1::uuid
+      WHERE p.unidade_id = $1::int
         AND p.ativo = true
       ORDER BY s.nome
     `;

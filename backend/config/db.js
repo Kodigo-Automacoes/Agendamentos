@@ -8,4 +8,10 @@ const pool = new Pool({
   database: process.env.DB_NAME,
 });
 
+// Garante que TODAS as conexões usem timezone America/Sao_Paulo.
+// Assim os timestamps retornam sempre no fuso de Brasília.
+pool.on("connect", (client) => {
+  client.query("SET timezone = 'America/Sao_Paulo'");
+});
+
 module.exports = { pool };

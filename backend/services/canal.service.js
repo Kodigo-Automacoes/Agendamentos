@@ -36,8 +36,8 @@ async function autoProvisionarCanal({ to_numero_e164, provedor, instance_key }) 
       `
       WITH alvo AS (
         SELECT id FROM core.canal_whatsapp
-         WHERE empresa_id = $1::uuid
-           AND unidade_id = $2::uuid
+         WHERE empresa_id = $1::int
+           AND unidade_id = $2::int
            AND provedor   = $3
            AND ativo      = true
          ORDER BY (instance_key IS NULL) DESC, updated_at DESC
@@ -69,7 +69,7 @@ async function autoProvisionarCanal({ to_numero_e164, provedor, instance_key }) 
   }
 
   const up = await pool.query(
-    `SELECT core.upsert_canal_whatsapp($1::uuid,$2::uuid,$3,$4,$5) AS canal_id`,
+    `SELECT core.upsert_canal_whatsapp($1::int,$2::int,$3,$4,$5) AS canal_id`,
     [empresaId, unidadeId, provedorNorm, instance_key || null, numeroFinal]
   );
 

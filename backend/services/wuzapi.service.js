@@ -54,7 +54,7 @@ async function getCanalRow({ canalId, instanceKey }) {
       SELECT id, empresa_id, unidade_id, numero_e164, provedor, provedor_config, ativo,
              instance_key, provedor_instance_key
       FROM core.canal_whatsapp
-      WHERE id = $1::uuid
+      WHERE id = $1::int
       LIMIT 1
       `,
       [canalId]
